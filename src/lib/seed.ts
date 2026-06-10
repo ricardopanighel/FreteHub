@@ -1,0 +1,173 @@
+import type { Provider, User } from "./types";
+
+// Fotos de demonstracao (Unsplash). No produto final, virao do Cloudinary.
+const PHOTO = (id: string) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=400&q=70`;
+
+export const SEED_PROVIDERS: Provider[] = [
+  {
+    id: "p-001",
+    name: "Carlos Transportes",
+    headline: "Fretes rapidos e mudancas em Santos e regiao",
+    bio: "Mais de 8 anos atuando com fretes urbanos. Atendimento pontual, veiculo limpo e cuidado com a sua carga. Trabalho sozinho ou com ajudante sob demanda.",
+    photoUrl: PHOTO("photo-1519085360753-af0119f7cbe7"),
+    vehicleType: "FIORINO",
+    vehicleDescription: "Fiat Fiorino 2019, bau fechado, capacidade 650kg",
+    regions: ["Santos - Centro", "Santos - Gonzaga", "Sao Vicente"],
+    services: ["FRETE_PEQUENO", "MUDANCA_RESIDENCIAL", "ENTREGA_EXPRESSA"],
+    contacts: {
+      phone: "+55 13 99999-0001",
+      whatsapp: "+55 13 99999-0001",
+      email: "carlos.fretes@example.com",
+    },
+    status: "APROVADO",
+    documentNote: "CNH e CRLV validados em 02/2026.",
+    createdAt: "2026-02-10T10:00:00.000Z",
+    reviews: [
+      {
+        id: "r-1",
+        authorName: "Mariana A.",
+        rating: 5,
+        comment: "Pontual e muito cuidadoso com os moveis. Recomendo!",
+        createdAt: "2026-03-01T12:00:00.000Z",
+      },
+      {
+        id: "r-2",
+        authorName: "Joao P.",
+        rating: 4,
+        comment: "Bom servico, preco justo.",
+        createdAt: "2026-03-15T12:00:00.000Z",
+      },
+    ],
+  },
+  {
+    id: "p-002",
+    name: "Ana Express Moto",
+    headline: "Entregas expressas de documentos e pequenos volumes",
+    bio: "Motofrete agil para documentos, encomendas e pequenas cargas. Cobertura em toda a Baixada Santista com rapidez.",
+    photoUrl: PHOTO("photo-1517841905240-472988babdf9"),
+    vehicleType: "MOTO",
+    vehicleDescription: "Honda CG 160 com bau de 90 litros",
+    regions: ["Santos - Ponta da Praia", "Sao Vicente", "Praia Grande"],
+    services: ["ENTREGA_EXPRESSA", "FRETE_PEQUENO"],
+    contacts: {
+      whatsapp: "+55 13 98888-0002",
+      email: "ana.express@example.com",
+    },
+    status: "APROVADO",
+    createdAt: "2026-02-18T10:00:00.000Z",
+    reviews: [
+      {
+        id: "r-3",
+        authorName: "Studio Criativo",
+        rating: 5,
+        comment: "Sempre resolve nossas entregas de ultima hora.",
+        createdAt: "2026-04-02T12:00:00.000Z",
+      },
+    ],
+  },
+  {
+    id: "p-003",
+    name: "Mudancas Sao Jorge",
+    headline: "Mudancas residenciais completas com ajudantes",
+    bio: "Equipe de 3 ajudantes, embalagem, montagem e desmontagem de moveis. Caminhao bau para mudancas de apartamentos e casas.",
+    photoUrl: PHOTO("photo-1600585154340-be6161a56a0c"),
+    vehicleType: "CAMINHAO_BAU",
+    vehicleDescription: "Caminhao 3/4 bau, capacidade 4 toneladas",
+    regions: ["Guaruja", "Bertioga", "Sao Vicente", "Santos"],
+    services: [
+      "MUDANCA_RESIDENCIAL",
+      "MUDANCA_COMERCIAL",
+      "MONTAGEM_MOVEIS",
+      "AJUDANTE_CARGA",
+    ],
+    contacts: {
+      phone: "+55 13 97777-0003",
+      whatsapp: "+55 13 97777-0003",
+      email: "contato@mudancassaojorge.example.com",
+    },
+    status: "APROVADO",
+    createdAt: "2026-01-30T10:00:00.000Z",
+    reviews: [],
+  },
+  {
+    id: "p-004",
+    name: "Rafael Van Cargas",
+    headline: "Van para fretes medios e cargas fragies",
+    bio: "Transporte de eletrodomesticos, vidros e itens delicados com cintas e protecao. Atendimento agendado.",
+    photoUrl: PHOTO("photo-1502920917128-1aa500764cbd"),
+    vehicleType: "VAN",
+    vehicleDescription: "Renault Master furgao, 12m3",
+    regions: ["Praia Grande", "Mongagua", "Itanhaem", "Sao Vicente"],
+    services: ["FRETE_PEQUENO", "CARGA_FRAGIL", "MUDANCA_RESIDENCIAL"],
+    contacts: {
+      whatsapp: "+55 13 96666-0004",
+    },
+    status: "APROVADO",
+    createdAt: "2026-03-05T10:00:00.000Z",
+    reviews: [
+      {
+        id: "r-4",
+        authorName: "Lucas F.",
+        rating: 5,
+        comment: "Transportou minha TV e geladeira sem nenhum arranhao.",
+        createdAt: "2026-04-20T12:00:00.000Z",
+      },
+    ],
+  },
+  {
+    id: "p-005",
+    name: "Pedro Carretos",
+    headline: "Carretos rapidos de carro - sob demanda",
+    bio: "Pequenos carretos, compras de marketplace e itens que cabem no porta-malas. Resposta rapida pelo WhatsApp.",
+    photoUrl: PHOTO("photo-1503376780353-7e6692767b70"),
+    vehicleType: "CARRO",
+    vehicleDescription: "Chevrolet Spin, 7 lugares rebativeis",
+    regions: ["Santos - Gonzaga", "Santos - Boqueirao", "Sao Vicente"],
+    services: ["FRETE_PEQUENO", "ENTREGA_EXPRESSA"],
+    contacts: {
+      phone: "+55 13 95555-0005",
+      whatsapp: "+55 13 95555-0005",
+      email: "pedro.carretos@example.com",
+    },
+    status: "PENDENTE",
+    documentNote: "Aguardando envio do CRLV.",
+    createdAt: "2026-05-28T10:00:00.000Z",
+    reviews: [],
+  },
+  {
+    id: "p-006",
+    name: "Beto Cargas Pesadas",
+    headline: "Caminhao pequeno para comercio e materiais",
+    bio: "Transporte de mercadorias para lojistas, materiais de construcao e estoque. Notas e recibos disponiveis.",
+    photoUrl: PHOTO("photo-1601584115197-04ecc0da31d7"),
+    vehicleType: "CAMINHAO_PEQUENO",
+    vehicleDescription: "Caminhao 3/4 carroceria aberta",
+    regions: ["Cubatao", "Santos", "Guaruja"],
+    services: ["FRETE_PEQUENO", "MUDANCA_COMERCIAL", "AJUDANTE_CARGA"],
+    contacts: {
+      whatsapp: "+55 13 94444-0006",
+      email: "beto.cargas@example.com",
+    },
+    status: "PENDENTE",
+    createdAt: "2026-06-01T10:00:00.000Z",
+    reviews: [],
+  },
+];
+
+export const SEED_USERS: (User & { password: string })[] = [
+  {
+    id: "u-admin",
+    name: "Equipe FreteHub",
+    email: "admin@fretehub.com",
+    role: "ADMIN",
+    password: "admin123",
+  },
+  {
+    id: "u-cliente",
+    name: "Cliente Demo",
+    email: "cliente@fretehub.com",
+    role: "CLIENTE",
+    password: "cliente123",
+  },
+];
