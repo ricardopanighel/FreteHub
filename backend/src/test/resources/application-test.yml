@@ -1,0 +1,19 @@
+# Perfil de teste: banco H2 em memoria (modo PostgreSQL), sem Docker nem
+# PostgreSQL externo. O schema vem do Hibernate (create-drop) e o Flyway fica
+# desligado, entao os testes exercitam a logica da API, nao as migrations.
+spring:
+  datasource:
+    url: jdbc:h2:mem:fretehub;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+fretehub:
+  jwt:
+    secret: chave-de-teste-fretehub-com-mais-de-32-bytes
+    expiration-hours: 12

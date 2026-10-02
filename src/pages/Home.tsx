@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listPublicProviders } from "../lib/api";
 import { ProviderCard } from "../components/ProviderCard";
-import { Button, Spinner } from "../components/ui";
+import { Button, ErrorNote, Spinner, queryErrorMessage } from "../components/ui";
 
 const STEPS = [
   {
@@ -14,8 +14,8 @@ const STEPS = [
     text: "Cada prestador passa pela curadoria da nossa equipe antes de ser publicado.",
   },
   {
-    title: "Fale direto e contrate",
-    text: "Entre em contato por WhatsApp, telefone ou e-mail e negocie sem intermediarios.",
+    title: "Solicite e acompanhe",
+    text: "Abra um pedido de frete e veja o status. O contato com o prestador continua direto.",
   },
 ];
 
@@ -35,7 +35,7 @@ const DIFFERENTIALS = [
 ];
 
 export function Home() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["providers", "destaques"],
     queryFn: () =>
       listPublicProviders(
@@ -71,10 +71,16 @@ export function Home() {
                   Explorar catalogo
                 </Button>
               </Link>
-              <Link to="/seja-prestador">
+              <Link to="/solicitar">
                 <Button className="bg-brand-900/40 ring-1 ring-inset ring-white/30 hover:bg-brand-900/60">
-                  Quero ser prestador
+                  Solicitar frete
                 </Button>
+              </Link>
+              <Link
+                to="/seja-prestador"
+                className="inline-flex items-center px-2 py-2.5 text-sm font-semibold text-white/90 underline-offset-4 hover:underline"
+              >
+                Quero ser prestador
               </Link>
             </div>
           </div>
@@ -96,8 +102,8 @@ export function Home() {
           Como funciona
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-sm text-slate-500">
-          Na primeira versao, o FreteHub conecta voce diretamente a prestadores
-          validados. A negociacao acontece entre as partes.
+          Encontre um prestador validado, registre o pedido e acompanhe o
+          andamento. A negociacao de preco continua direta com o prestador.
         </p>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {STEPS.map((step, i) => (
@@ -138,6 +144,10 @@ export function Home() {
           </div>
           {isLoading ? (
             <Spinner />
+          ) : isError ? (
+            <div className="mt-8">
+              <ErrorNote message={queryErrorMessage(error)} />
+            </div>
           ) : (
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {data?.items.map((p) => (

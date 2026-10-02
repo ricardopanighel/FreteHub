@@ -42,6 +42,15 @@ export function Navbar() {
       <NavLink to="/catalogo" className={linkClass} onClick={() => setOpen(false)}>
         Catalogo
       </NavLink>
+      {isAuthenticated && !isAdmin && (
+        <NavLink
+          to="/meus-fretes"
+          className={linkClass}
+          onClick={() => setOpen(false)}
+        >
+          Meus fretes
+        </NavLink>
+      )}
       <NavLink
         to="/seja-prestador"
         className={linkClass}

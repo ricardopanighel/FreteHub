@@ -99,6 +99,20 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
+export function ErrorNote({ message }: { message: string }) {
+  return (
+    <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-inset ring-red-200">
+      {message}
+    </p>
+  );
+}
+
+export function queryErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Nao foi possivel carregar os dados.";
+}
+
 export function Spinner({ label = "Carregando..." }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-3 py-12 text-slate-500">

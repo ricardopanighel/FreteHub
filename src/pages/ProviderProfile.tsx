@@ -5,7 +5,15 @@ import { addReview, getProvider } from "../lib/api";
 import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import { Badge } from "../components/Badge";
 import { RatingStars, averageRating } from "../components/RatingStars";
-import { Button, EmptyState, Field, Spinner, Textarea } from "../components/ui";
+import {
+  Button,
+  EmptyState,
+  ErrorNote,
+  Field,
+  Spinner,
+  Textarea,
+  queryErrorMessage,
+} from "../components/ui";
 import { useAuth } from "../lib/auth";
 
 function onlyDigits(value: string): string {
@@ -14,10 +22,10 @@ function onlyDigits(value: string): string {
 
 export function ProviderProfile() {
   const { id = "" } = useParams();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: provider, isLoading } = useQuery({
+  const { data: provider, isLoading, isError, error } = useQuery({
     queryKey: ["provider", id],
     queryFn: () => getProvider(id),
   });
@@ -28,7 +36,6 @@ export function ProviderProfile() {
   const reviewMutation = useMutation({
     mutationFn: () =>
       addReview(id, {
-        authorName: user?.name ?? "Cliente",
         rating,
         comment: comment.trim(),
       }),
@@ -40,6 +47,14 @@ export function ProviderProfile() {
   });
 
   if (isLoading) return <Spinner label="Carregando perfil..." />;
+
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16">
+        <ErrorNote message={queryErrorMessage(error)} />
+      </div>
+    );
+  }
 
   if (!provider) {
     return (
@@ -252,8 +267,27 @@ export function ProviderProfile() {
               Falar com {provider.name.split(" ")[0]}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Escolha o canal e negocie preco e condicoes diretamente.
+              Registre o pedido no FreteHub ou fale direto para negociar preco
+              e condicoes.
             </p>
+
+            {isPublic && (
+              <Link
+                to={
+                  isAuthenticated
+                    ? `/solicitar?prestador=${provider.id}`
+                    : "/login"
+                }
+                state={
+                  isAuthenticated
+                    ? undefined
+                    : { from: `/solicitar?prestador=${provider.id}` }
+                }
+                className="mt-4 block"
+              >
+                <Button className="w-full">Solicitar frete</Button>
+              </Link>
+            )}
 
             <div className="mt-4 flex flex-col gap-2.5">
               {wa && (

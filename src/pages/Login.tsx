@@ -4,7 +4,7 @@ import { useAuth } from "../lib/auth";
 import { Button, Field, Input } from "../components/ui";
 
 export function Login() {
-  const { login } = useAuth();
+  const { login, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
@@ -32,8 +32,14 @@ export function Login() {
     <div className="mx-auto flex max-w-md flex-col px-4 py-16">
       <h1 className="text-2xl font-bold text-slate-900">Entrar</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Acesse sua conta para avaliar prestadores e gerenciar o catalogo.
+        Acesse sua conta para solicitar fretes e avaliar prestadores.
       </p>
+
+      {sessionExpired && (
+        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+          Sua sessao expirou. Entre novamente para continuar.
+        </p>
+      )}
 
       <form
         onSubmit={handleSubmit}

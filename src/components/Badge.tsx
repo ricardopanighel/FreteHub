@@ -1,5 +1,5 @@
-import type { ProviderStatus } from "../lib/types";
-import { STATUS_LABELS } from "../lib/types";
+import type { FreightStatus, ProviderStatus } from "../lib/types";
+import { FREIGHT_STATUS_LABELS, STATUS_LABELS } from "../lib/types";
 
 export function Badge({
   children,
@@ -22,6 +22,20 @@ export function Badge({
       {children}
     </span>
   );
+}
+
+export function FreightStatusBadge({ status }: { status: FreightStatus }) {
+  const tone =
+    status === "CONCLUIDA" || status === "CONFIRMADA"
+      ? "green"
+      : status === "EM_NEGOCIACAO"
+        ? "brand"
+        : status === "ABERTA"
+          ? "amber"
+          : status === "CANCELADA"
+            ? "red"
+            : "slate";
+  return <Badge tone={tone}>{FREIGHT_STATUS_LABELS[status]}</Badge>;
 }
 
 export function StatusBadge({ status }: { status: ProviderStatus }) {

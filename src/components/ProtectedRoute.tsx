@@ -13,7 +13,13 @@ export function ProtectedRoute({
   const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: `${location.pathname}${location.search}` }}
+        replace
+      />
+    );
   }
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/" replace />;

@@ -5,7 +5,10 @@ import { listAllProviders, updateProviderStatus } from "../lib/api";
 import type { Provider, ProviderStatus } from "../lib/types";
 import { VEHICLE_LABELS } from "../lib/types";
 import { StatusBadge } from "../components/Badge";
-import { Button, Spinner } from "../components/ui";
+import { Button, ErrorNote, Spinner, queryErrorMessage } from "../components/ui";
+import { AdminFreights } from "./AdminFreights";
+
+type Panel = "prestadores" | "fretes";
 
 type Tab = "PENDENTE" | "APROVADO" | "TODOS";
 
@@ -26,9 +29,10 @@ function StatCard({ label, value }: { label: string; value: number }) {
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
+  const [panel, setPanel] = useState<Panel>("prestadores");
   const [tab, setTab] = useState<Tab>("PENDENTE");
 
-  const { data: providers, isLoading } = useQuery({
+  const { data: providers, isLoading, isError, error } = useQuery({
     queryKey: ["admin", "providers"],
     queryFn: listAllProviders,
   });
@@ -110,16 +114,42 @@ export function AdminDashboard() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900">Painel da equipe</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Valide a documentacao e gerencie a publicacao dos prestadores no
-          catalogo.
+          {panel === "prestadores"
+            ? "Valide a documentacao e gerencie a publicacao dos prestadores no catalogo."
+            : "Acompanhe os pedidos de frete e avance o status de cada um."}
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total de cadastros" value={stats.total} />
-        <StatCard label="Aguardando validacao" value={stats.pendentes} />
-        <StatCard label="Ativos no catalogo" value={stats.aprovados} />
+      <div className="mb-6 flex gap-2">
+        {(
+          [
+            ["prestadores", "Prestadores"],
+            ["fretes", "Solicitacoes"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setPanel(key)}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              panel === key
+                ? "bg-brand-600 text-white"
+                : "bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {panel === "fretes" ? (
+        <AdminFreights />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard label="Total de cadastros" value={stats.total} />
+            <StatCard label="Aguardando validacao" value={stats.pendentes} />
+            <StatCard label="Ativos no catalogo" value={stats.aprovados} />
+          </div>
 
       <div className="mt-8 flex gap-2 border-b border-slate-200">
         {TABS.map((t) => (
@@ -139,6 +169,8 @@ export function AdminDashboard() {
 
       {isLoading ? (
         <Spinner label="Carregando cadastros..." />
+      ) : isError ? (
+        <ErrorNote message={queryErrorMessage(error)} />
       ) : filtered.length === 0 ? (
         <p className="py-12 text-center text-sm text-slate-500">
           Nenhum prestador nesta aba.
@@ -179,6 +211,8 @@ export function AdminDashboard() {
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );

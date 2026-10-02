@@ -94,3 +94,36 @@ export interface CatalogFilters {
   region: string;
   service: ServiceTag | "";
 }
+
+// Ciclo de uma solicitacao de frete acompanhada pelo cliente e pela equipe.
+export type FreightStatus =
+  | "ABERTA"
+  | "EM_NEGOCIACAO"
+  | "CONFIRMADA"
+  | "CONCLUIDA"
+  | "CANCELADA";
+
+export const FREIGHT_STATUS_LABELS: Record<FreightStatus, string> = {
+  ABERTA: "Aberta",
+  EM_NEGOCIACAO: "Em negociacao",
+  CONFIRMADA: "Confirmada",
+  CONCLUIDA: "Concluida",
+  CANCELADA: "Cancelada",
+};
+
+export interface FreightRequest {
+  id: string;
+  clientId: string;
+  clientName: string;
+  providerId: string | null;
+  providerName: string | null;
+  origin: string;
+  destination: string;
+  description: string;
+  scheduledDate: string; // YYYY-MM-DD
+  vehicleType: VehicleType | "";
+  service: ServiceTag | "";
+  status: FreightStatus;
+  createdAt: string;
+  updatedAt: string;
+}

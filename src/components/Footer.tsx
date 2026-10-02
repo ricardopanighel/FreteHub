@@ -22,6 +22,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/solicitar" className="hover:text-brand-600">
+                Solicitar frete
+              </Link>
+            </li>
+            <li>
               <Link to="/seja-prestador" className="hover:text-brand-600">
                 Seja um prestador
               </Link>
@@ -31,9 +36,9 @@ export function Footer() {
         <div>
           <h4 className="text-sm font-semibold text-slate-800">Em breve</h4>
           <ul className="mt-3 space-y-2 text-sm text-slate-500">
-            <li>Solicitacao de fretes</li>
             <li>Propostas de motoristas</li>
-            <li>Acompanhamento do servico</li>
+            <li>Notificacoes</li>
+            <li>Chat e mapas</li>
           </ul>
         </div>
         <div>

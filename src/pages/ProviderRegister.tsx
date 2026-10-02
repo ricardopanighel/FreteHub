@@ -270,7 +270,9 @@ export function ProviderRegister() {
 
         {mutation.isError && (
           <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-inset ring-red-200">
-            Nao foi possivel enviar o cadastro. Tente novamente.
+            {mutation.error instanceof Error
+              ? mutation.error.message
+              : "Nao foi possivel enviar o cadastro. Tente novamente."}
           </p>
         )}
 

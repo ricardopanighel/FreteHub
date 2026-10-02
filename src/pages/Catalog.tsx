@@ -4,7 +4,15 @@ import { listPublicProviders, listRegions } from "../lib/api";
 import type { CatalogFilters, ServiceTag, VehicleType } from "../lib/types";
 import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import { ProviderCard } from "../components/ProviderCard";
-import { Button, EmptyState, Input, Select, Spinner } from "../components/ui";
+import {
+  Button,
+  EmptyState,
+  ErrorNote,
+  Input,
+  Select,
+  Spinner,
+  queryErrorMessage,
+} from "../components/ui";
 
 const EMPTY: CatalogFilters = {
   search: "",
@@ -34,7 +42,7 @@ export function Catalog() {
     queryFn: listRegions,
   });
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ["providers", filters, page],
     queryFn: () => listPublicProviders(filters, page, PAGE_SIZE),
     placeholderData: keepPreviousData,
@@ -159,6 +167,8 @@ export function Catalog() {
       <div className="mt-8">
         {isLoading ? (
           <Spinner label="Buscando prestadores..." />
+        ) : isError ? (
+          <ErrorNote message={queryErrorMessage(error)} />
         ) : data && data.items.length > 0 ? (
           <>
             <div

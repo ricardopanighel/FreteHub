@@ -1,0 +1,36 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  profiles:
+    # Em producao defina SPRING_PROFILES_ACTIVE=prod (ver application-prod.yml).
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fretehub}
+    username: ${DB_USER:fretehub}
+    password: ${DB_PASSWORD:fretehub}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # O schema e dono do Flyway. O Hibernate apenas valida que as entidades
+      # batem com o que as migrations criaram.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    # Permite adotar o Flyway sobre um banco que ja tinha schema (ex.: criado
+    # por um ddl-auto: update anterior) sem recria-lo do zero.
+    baseline-on-migrate: true
+    baseline-version: 0
+  jackson:
+    default-property-inclusion: non_null
+
+fretehub:
+  jwt:
+    # Sem valor versionado. Defina JWT_SECRET (32+ caracteres) via ambiente.
+    # Em dev, se ausente, uma chave efemera e gerada a cada subida.
+    secret: ${JWT_SECRET:}
+    expiration-hours: ${JWT_EXPIRATION_HOURS:12}
