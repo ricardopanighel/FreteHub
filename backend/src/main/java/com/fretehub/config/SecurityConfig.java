@@ -22,9 +22,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
   private final JwtAuthFilter jwtAuthFilter;
+  private final CorsProperties corsProperties;
 
-  public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+  public SecurityConfig(JwtAuthFilter jwtAuthFilter, CorsProperties corsProperties) {
     this.jwtAuthFilter = jwtAuthFilter;
+    this.corsProperties = corsProperties;
   }
 
   @Bean
@@ -51,8 +53,6 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/providers").permitAll()
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/**").authenticated()
-            // Fora de /api so ha o front publicado (ver SpaConfig).
-            .requestMatchers(HttpMethod.GET, "/**").permitAll()
             .anyRequest().denyAll())
         .exceptionHandling(errors -> errors
             .authenticationEntryPoint((request, response, ex) -> {
@@ -72,7 +72,7 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+    config.setAllowedOrigins(corsProperties.allowedOrigins());
     config.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

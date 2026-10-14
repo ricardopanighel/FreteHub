@@ -78,9 +78,10 @@ Frontend e API se comunicam por **HTTP com JSON**. Toda rota da API comeca com
 repassa para `http://localhost:8080/api/...`. Isso evita problemas de CORS e
 deixa o front chamar sempre o caminho relativo `/api`.
 
-Na versao publicada (secao 3.1) nao ha Vite: o build do front vai dentro do
-jar e a propria API entrega as telas e a `/api` no mesmo endereco. O front
-continua chamando `/api` relativo, e o CORS continua fora do caminho.
+Na versao publicada (secao 3.1) nao ha Vite: o front e um site estatico em um
+endereco e a API fica em outro. O build do front recebe a URL da API em
+`VITE_API_URL`, e a API libera o endereco do site no CORS
+(`CORS_ALLOWED_ORIGINS`).
 
 ### Tecnologias
 
@@ -158,47 +159,63 @@ VITE_PROXY_TARGET=http://localhost:8081 npm run dev     # na raiz
 
 ### 3.1 Publicar (Render + Neon)
 
-A versao online usa dois servicos gratuitos:
+A versao online usa tres pecas gratuitas: dois servicos no Render, descritos em
+[`render.yaml`](../render.yaml), e o banco no Neon.
 
-- **Render** roda a aplicacao: um unico container ([`Dockerfile`](../Dockerfile))
-  com a API e o build do front, descrito em [`render.yaml`](../render.yaml).
-- **Neon** guarda o PostgreSQL. O banco free do Render expira em 30 dias; o
+```
+ Navegador
+    │
+    ├─ https://fretehub-web.onrender.com ──▶ fretehub-web (site estatico)
+    │                                          build do front, nunca dorme
+    │
+    └─ https://fretehub-api.onrender.com/api ──▶ fretehub-api (Docker)
+                                                   │ dorme apos 15 min
+                                                   ▼
+                                                Neon (PostgreSQL)
+```
+
+- **`fretehub-web`** — o Render roda `npm run build` e publica o `dist/`.
+  Rotas do React Router (`/catalogo`, `/prestador/...`) nao sao arquivos: uma
+  regra de rewrite as manda para o `index.html`, e o front resolve a tela.
+- **`fretehub-api`** — o Render gera a imagem do
+  [`backend/Dockerfile`](../backend/Dockerfile) e roda o jar.
+- **Neon** — guarda o PostgreSQL. O banco free do Render expira em 30 dias; o
   do Neon e permanente (1 GB por projeto).
 
-O `Dockerfile` tem tres etapas: gera o build do front (`npm run build`), copia
-o `dist/` para `src/main/resources/static` e empacota o jar, e por fim roda o
-jar numa imagem so com o Java. O [`SpaConfig`](../backend/src/main/java/com/fretehub/config/SpaConfig.java)
-entrega esses arquivos e manda as rotas do React (`/catalogo`,
-`/prestador/...`) para o `index.html`. Em dev a pasta `static` nao existe e
-nada muda.
+Os dois servicos se encontram pela URL publica: o site recebe
+`VITE_API_URL=https://fretehub-api.onrender.com` no build, e a API recebe
+`CORS_ALLOWED_ORIGINS=https://fretehub-web.onrender.com`. Se o Render der outro
+endereco a algum deles (nome ja usado por outra conta), ajuste essas duas
+linhas do `render.yaml`.
 
 **Passo a passo (uma vez so):**
 
 1. No [Neon](https://neon.com), crie um projeto na regiao **AWS US East
-   (N. Virginia)**, a mesma do Render. Em **Connect**, copie a connection
-   string (`postgresql://...neon.tech/neondb?sslmode=require...`).
+   (N. Virginia)**, a mesma da API. Em **Connect**, copie a connection string
+   (`postgresql://...neon.tech/neondb?sslmode=require...`).
 2. No [Render](https://render.com), entre com o GitHub e va em **New →
    Blueprint**. Escolha este repositorio; o Render le o `render.yaml`.
 3. Cole a connection string do Neon no campo `DATABASE_URL` e confirme.
    `JWT_SECRET` e gerado pelo proprio Render.
-4. Aguarde o build (alguns minutos). Na primeira subida, o Flyway cria as
-   tabelas no Neon e o seed carrega as contas de demonstracao.
+4. Aguarde os dois deploys (alguns minutos). Na primeira subida da API, o
+   Flyway cria as tabelas no Neon e o seed carrega as contas de demonstracao.
 
-O [`docker-start.sh`](../docker-start.sh) converte a `DATABASE_URL` nas
-variaveis `DB_URL`, `DB_USER` e `DB_PASSWORD` que o perfil `prod` exige. Se o
-endereco copiado for o do pooler (`-pooler`), ele troca pela conexao direta,
-porque o Flyway nao funciona bem atras do PgBouncer e a API ja tem o Hikari
-como pool. Cada push na `main` gera um novo deploy.
+O [`backend/docker-start.sh`](../backend/docker-start.sh) converte a
+`DATABASE_URL` nas variaveis `DB_URL`, `DB_USER` e `DB_PASSWORD` que o perfil
+`prod` exige. Se o endereco copiado for o do pooler (`-pooler`), ele troca pela
+conexao direta, porque o Flyway nao funciona bem atras do PgBouncer e a API ja
+tem o Hikari como pool. Cada push na `main` gera um novo deploy.
 
 **Limites do plano gratuito:**
 
-| Servico | Limite                                                                 |
-| ------- | ---------------------------------------------------------------------- |
-| Render  | 512 MB e 0,1 CPU; dorme apos 15 min sem acesso e leva 1 a 2 min para acordar |
-| Neon    | 1 GB; o banco pausa apos 5 min sem uso e volta sozinho na consulta seguinte |
+| Servico        | Limite                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| `fretehub-web` | Servido por CDN; nao dorme                                             |
+| `fretehub-api` | 512 MB e 0,1 CPU; dorme apos 15 min sem acesso e leva 1 a 2 min para acordar |
+| Neon           | 1 GB; o banco pausa apos 5 min sem uso e volta sozinho na consulta seguinte |
 
-Antes de uma apresentacao, abra o link alguns minutos antes para acordar a
-aplicacao.
+Com a API dormindo, o site abre na hora, mas os dados demoram a aparecer ate
+ela acordar. Antes de uma apresentacao, abra o link alguns minutos antes.
 
 ---
 
@@ -216,10 +233,11 @@ valores padrao apenas para o desenvolvimento local. O arquivo
 | `DB_USER`                | `fretehub`                                    | **obrigatoria**              |
 | `DB_PASSWORD`            | `fretehub`                                    | **obrigatoria**              |
 | `DATABASE_URL`           | —                                             | no container, substitui as tres acima (secao 3.1) |
+| `CORS_ALLOWED_ORIGINS`   | `http://localhost:5173,http://127.0.0.1:5173` | URL do site publicado        |
 | `JWT_SECRET`             | vazio → chave efemera gerada na subida        | **obrigatoria**, 32+ caracteres |
 | `JWT_EXPIRATION_HOURS`   | `12`                                          | opcional                     |
 | `VITE_PROXY_TARGET`      | `http://localhost:8080` (usada pelo Vite)     | —                            |
-| `VITE_API_URL`           | vazio (usa `/api` relativo)                   | URL da API, se separada      |
+| `VITE_API_URL`           | vazio (usa `/api` relativo)                   | URL da API, no build do site |
 
 ### Perfis
 
@@ -247,7 +265,7 @@ assunto** (cada pasta e uma parte do negocio), e nao por tipo de classe.
 com/fretehub/
 ├── FreteHubApplication.java   # ponto de entrada
 ├── config/SecurityConfig.java # regras de acesso, CORS, BCrypt
-├── config/SpaConfig.java      # entrega o front na versao publicada
+├── config/CorsProperties.java # enderecos do front liberados no CORS
 ├── security/                  # JWT e usuario logado
 ├── user/                      # contas, login e cadastro de cliente
 ├── provider/                  # prestadores, curadoria e avaliacoes
@@ -640,8 +658,7 @@ avaliadas de cima para baixo:
 | `POST /api/providers` (cadastro de prestador)                | Publico        |
 | `/api/admin/**`                                              | Papel `ADMIN`  |
 | Qualquer outra rota `/api/**`                                | Logado         |
-| `GET` fora de `/api` (telas e arquivos do front publicado)   | Publico        |
-| Qualquer outra requisicao fora de `/api`                     | Negado         |
+| Fora de `/api`                                               | Negado         |
 
 Alem dessas regras de rota, os services checam **posse**: so o dono cancela o
 proprio pedido, e "meus fretes" filtra pelo id do usuario do token.
@@ -651,10 +668,11 @@ proprio pedido, e "meus fretes" filtra pelo id do usuario do token.
 - **Senhas** com BCrypt (secao 5.5).
 - **CSRF desligado** — seguro aqui porque a autenticacao e por cabecalho
   `Authorization`, que o navegador nao envia sozinho como faria com cookies.
-- **CORS** liberado apenas para `http://localhost:5173` e
-  `http://127.0.0.1:5173`, com os metodos GET, POST, PATCH e OPTIONS. Na
-  versao publicada, front e API estao no mesmo endereco e o CORS nao se
-  aplica. Com o front em outro dominio, essa lista precisa ser atualizada.
+- **CORS** liberado apenas para os enderecos em `CORS_ALLOWED_ORIGINS`
+  ([`CorsProperties`](../backend/src/main/java/com/fretehub/config/CorsProperties.java)),
+  com os metodos GET, POST, PATCH e OPTIONS. Em dev, o padrao e o Vite
+  (`http://localhost:5173` e `http://127.0.0.1:5173`); na versao publicada, a
+  URL do site (secao 3.1). Qualquer outro site recebe 403.
 - **Segredos fora do codigo** e falha explicita em `prod` sem eles (secao 4).
 
 ---
@@ -1045,6 +1063,7 @@ contamina o outro.
 | `ProviderCurationApiTest`  | Catalogo so com aprovados, visao do admin, aprovacao publica, cliente nao cura, cadastro entra pendente, cadastro sem contato, perfil pendente da `404` (anonimo e cliente), nota interna fora do perfil e do catalogo, admin ve pendente com nota, nao avalia pendente |
 | `FreightStatusApiTest`     | Avanco de status, transicao invalida, cliente sem acesso a rota admin, cancelamento antes/depois da confirmacao, nao-dono nao cancela |
 | `ReviewApiTest`            | Avaliacao unica por usuario, usuarios diferentes, nota fora de 1..5          |
+| `CorsApiTest`              | Front configurado liberado no preflight, outro site recusado com `403`       |
 
 `ApiTestSupport` e a base comum: tem o helper `login()` que devolve um token e
 as credenciais do seed.
@@ -1093,13 +1112,11 @@ Coisas que funcionam hoje, mas que convem saber antes de evoluir ou publicar.
 - Os ids usam 8 caracteres de um UUID (~4 bilhoes de combinacoes por
   prefixo). Colisao e improvavel no volume atual, mas nao impossivel; em caso
   de colisao a gravacao falha por chave duplicada.
-- CORS so libera `localhost:5173`. A versao publicada nao depende dele; so
-  seria preciso torna-lo configuravel com o front em outro dominio.
 - O deploy no Render (secao 3.1) roda a cada push na `main`, mas nao ha CI:
   os testes nao rodam antes. Tambem nao ha logs estruturados nem
   monitoramento.
-- No plano free do Render, a aplicacao dorme apos 15 min sem acesso e o
-  primeiro acesso seguinte leva 1 a 2 min.
+- No plano free do Render, a API dorme apos 15 min sem acesso e o primeiro
+  acesso seguinte leva 1 a 2 min.
 
 **Fora do escopo, de proposito**
 

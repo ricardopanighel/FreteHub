@@ -76,9 +76,13 @@ Com `SPRING_PROFILES_ACTIVE=prod`, nao ha defaults: a aplicacao nao sobe sem
 
 ## Publicar online
 
-A versao online roda no **Render** (plano free) com o banco no **Neon**
-(PostgreSQL free, sem prazo de expiracao). O `Dockerfile` gera um unico
-container: a API entrega o build do front e a `/api` no mesmo endereco.
+A versao online usa dois servicos no **Render** (plano free), descritos no
+`render.yaml`, e o banco no **Neon** (PostgreSQL free, sem prazo de expiracao):
+
+| Servico        | O que e                                  | Endereco                            |
+| -------------- | ---------------------------------------- | ----------------------------------- |
+| `fretehub-web` | Site estatico com o build do front       | `https://fretehub-web.onrender.com` |
+| `fretehub-api` | API em Docker (`backend/Dockerfile`)     | `https://fretehub-api.onrender.com` |
 
 1. No Neon, crie um projeto (regiao AWS US East) e copie a connection string.
 2. No Render, **New → Blueprint** com este repositorio (le o `render.yaml`).
@@ -86,7 +90,7 @@ container: a API entrega o build do front e a `/api` no mesmo endereco.
    Render.
 
 Na primeira subida, o Flyway cria as tabelas e o seed carrega as contas de
-demonstracao. A aplicacao dorme apos 15 min sem acesso e leva 1 a 2 min para
+demonstracao. A API dorme apos 15 min sem acesso e leva 1 a 2 min para
 acordar. Detalhes na secao 3.1 da [documentacao tecnica](docs/documentacao-tecnica.md#31-publicar-render--neon).
 
 ## Banco e migrations
@@ -161,8 +165,8 @@ backend/             # Spring Boot
   src/main/resources/db/migration/   # migrations Flyway (schema)
   src/main/resources/seed/demo.json  # dados de demonstracao
   src/test/java/com/fretehub/api/    # testes de API (MockMvc + H2)
-Dockerfile           # imagem de publicacao (front + API)
-render.yaml          # Blueprint do Render
+  Dockerfile                         # imagem da API para publicacao
+render.yaml          # Blueprint do Render (site + API)
 ```
 
 ## Visao futura

@@ -1,14 +1,36 @@
-# Blueprint do Render: API e front em um unico servico Docker (ver Dockerfile).
-# O banco fica no Neon (Postgres gratuito, sem prazo de expiracao). A connection
+# Blueprint do Render: o front como site estatico e a API como servico Docker.
+# O banco fica no Neon (Postgres gratuito, sem prazo de expiracao); a connection
 # string dele e pedida em DATABASE_URL quando o Blueprint e criado.
+#
+# Os dois servicos se conhecem pela URL publica (VITE_API_URL e
+# CORS_ALLOWED_ORIGINS). Se o Render der outro endereco a algum deles, ajuste
+# as duas linhas.
 services:
   - type: web
-    name: fretehub
+    name: fretehub-web
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
+        value: https://fretehub-api.onrender.com
+    routes:
+      # Rotas do React Router (/catalogo, /prestador/...) nao sao arquivos.
+      # O Render serve primeiro os arquivos que existem; o resto vai para o
+      # index.html e o front resolve a tela.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: fretehub-api
     runtime: docker
     plan: free
     region: virginia
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
@@ -16,3 +38,5 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://fretehub-web.onrender.com
