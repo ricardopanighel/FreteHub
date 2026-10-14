@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { UserPlusIcon } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
-import { Button, Field, Input } from "../components/ui";
+import { AuthShell } from "../components/AuthShell";
+import { Alert, Button, ButtonSpinner, Field, Input } from "../components/ui";
 
 export function Register() {
   const { register } = useAuth();
@@ -37,16 +39,13 @@ export function Register() {
   };
 
   return (
-    <div className="mx-auto flex max-w-md flex-col px-4 py-16">
-      <h1 className="text-2xl font-bold text-slate-900">Criar conta</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Crie sua conta de cliente para avaliar prestadores e, em breve,
-        solicitar fretes.
-      </p>
-
+    <AuthShell
+      title="Criar conta"
+      description="Crie sua conta de cliente para solicitar fretes e avaliar prestadores."
+    >
       <form
         onSubmit={handleSubmit}
-        className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8"
       >
         <Field label="Nome completo" required>
           <Input
@@ -67,12 +66,11 @@ export function Register() {
             required
           />
         </Field>
-        <Field label="Senha" required>
+        <Field label="Senha" required hint="Minimo de 6 caracteres.">
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Minimo 6 caracteres"
             autoComplete="new-password"
             required
           />
@@ -88,26 +86,32 @@ export function Register() {
           />
         </Field>
 
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200">
-            {error}
-          </p>
-        )}
+        {error && <Alert tone="danger">{error}</Alert>}
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Criando..." : "Criar conta"}
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          {loading ? (
+            <>
+              <ButtonSpinner />
+              Criando...
+            </>
+          ) : (
+            <>
+              <UserPlusIcon weight="bold" className="size-5" />
+              Criar conta
+            </>
+          )}
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-slate-600">
         Ja tem conta?{" "}
         <Link
           to="/login"
-          className="font-semibold text-brand-600 hover:text-brand-700"
+          className="font-semibold text-primary-700 underline-offset-4 hover:text-primary-800 hover:underline"
         >
           Entrar
         </Link>
       </p>
-    </div>
+    </AuthShell>
   );
 }

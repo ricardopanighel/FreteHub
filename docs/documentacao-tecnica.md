@@ -85,6 +85,8 @@ deixa o front chamar sempre o caminho relativo `/api`.
 | Interface       | React 18 + TypeScript              | Componentes de tela tipados                            |
 | Build do front  | Vite 5                             | Servidor de desenvolvimento rapido e build de producao |
 | Estilo          | Tailwind CSS v4                    | Classes utilitarias de CSS                             |
+| Icones          | Phosphor Icons                     | Icones SVG como componentes React                      |
+| Fonte           | Plus Jakarta Sans (Fontsource)     | Fonte da interface, servida pelo proprio app           |
 | Rotas do front  | React Router v6                    | Navegacao entre paginas sem recarregar                 |
 | Dados no front  | TanStack React Query v5            | Busca, cache e atualizacao dos dados da API            |
 | API             | Spring Boot 3.5 (Java 21+)         | Servidor web, regras de negocio                        |
@@ -704,26 +706,34 @@ Codigo em `src/`. Tudo em TypeScript; a interface e em portugues sem acento.
 
 ```
 src/
-├── main.tsx            # monta o app: React Query, Router e sessao
+├── main.tsx            # monta o app: React Query, Router, sessao e icones
 ├── App.tsx             # tabela de rotas
-├── index.css           # Tailwind
+├── index.css           # Tailwind + tokens do design system (cores, fonte, foco)
 ├── lib/
 │   ├── api.ts          # todas as chamadas HTTP para a API
 │   ├── auth.tsx        # sessao do usuario (login, logout, token)
-│   └── types.ts        # tipos que espelham o JSON da API + rotulos de tela
-├── components/         # pecas reutilizaveis (Navbar, cards, badges, rota protegida)
+│   ├── types.ts        # tipos que espelham o JSON da API + rotulos de tela
+│   ├── format.ts       # datas, iniciais e limpeza de numeros
+│   └── whatsapp.ts     # links wa.me com mensagem pronta
+├── components/         # pecas reutilizaveis (ui.tsx, Navbar, cards, badges, rota protegida)
 └── pages/              # uma tela por arquivo
 ```
 
 ### 9.1 Inicializacao (`main.tsx`)
 
-O app e "embrulhado" em tres provedores, de fora para dentro:
+O app e "embrulhado" em quatro provedores, de fora para dentro:
 
 1. **`QueryClientProvider`** — cache de dados do React Query. Configurado
    para considerar os dados frescos por 30 segundos, nao recarregar ao trocar
    de aba e tentar de novo uma vez em caso de falha.
 2. **`BrowserRouter`** — habilita as rotas por URL.
 3. **`AuthProvider`** — disponibiliza a sessao para qualquer tela.
+4. **`IconContext.Provider`** — padroes dos icones Phosphor: tamanho `1em`
+   (acompanha o texto ao lado) e `aria-hidden`, porque quase todo icone vem
+   junto de um texto visivel (secao 9.8).
+
+O `main.tsx` tambem importa a fonte Plus Jakarta Sans
+(`@fontsource-variable/plus-jakarta-sans`), que vai junto no build.
 
 ### 9.2 Rotas e telas
 
@@ -743,9 +753,11 @@ Definidas em [`App.tsx`](../src/App.tsx). Todas ficam dentro do `Layout`
 | `/admin`          | `AdminDashboard`   | ADMIN   | Curadoria de prestadores + gestao de fretes (`AdminFreights`) |
 | qualquer outra    | `NotFound`         | Publico | Pagina 404                                                  |
 
-Os botoes de contato do perfil sao links nativos: `https://wa.me/<numero>`
-abre o WhatsApp, `tel:` abre o discador e `mailto:` o cliente de e-mail. Nao
-ha nenhuma intermediacao da plataforma nessa conversa.
+Os botoes de contato do perfil sao links nativos: `https://wa.me/<numero>?text=...`
+abre o WhatsApp com uma saudacao ja escrita (secao 9.7), `tel:` abre o
+discador e `mailto:` o cliente de e-mail. Nao ha nenhuma intermediacao da
+plataforma nessa conversa: a mensagem so chega ao prestador se o cliente
+enviar.
 
 ### 9.3 Rotas protegidas
 
@@ -820,6 +832,7 @@ Chaves usadas:
 | --------------------------------- | ---------------------------- |
 | `["providers", filtros, pagina]`  | Pagina do catalogo           |
 | `["providers", "destaques"]`      | Destaques da Home            |
+| `["providers", "select"]`         | Opcoes de Solicitar frete    |
 | `["provider", id]`                | Um perfil                    |
 | `["regions"]`                     | Regioes para o filtro        |
 | `["freights", "mine", clientId]`  | Meus fretes                  |
@@ -829,6 +842,95 @@ Chaves usadas:
 No catalogo, a busca textual tem **debounce**: a consulta so dispara um
 instante depois que a pessoa para de digitar, para nao chamar a API a cada
 tecla.
+
+### 9.7 Mensagem pronta no WhatsApp (`lib/whatsapp.ts`)
+
+O FreteHub nao envia nada pelo WhatsApp. Ele so monta um link `wa.me` com o
+texto preenchido; a conversa abre no WhatsApp do proprio cliente, que revisa,
+edita se quiser e envia.
+
+| Funcao                         | O que faz                                                                |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `whatsappNumber(raw)`          | Converte o numero cadastrado para o formato do wa.me (veja abaixo)       |
+| `whatsappLink(numero, texto)`  | Monta `https://wa.me/<numero>?text=<texto codificado>`                   |
+| `profileGreeting()`            | Saudacao do botao "Chamar no WhatsApp" do perfil                         |
+| `freightMessage(pedido, nome)` | Texto com origem, destino, data, veiculo e servico (se houver) e a carga |
+
+**Numero.** `whatsappNumber` deixa so os digitos e tira zeros a esquerda. Com
+10 ou 11 digitos (DDD + numero) e sem `+` na frente, acrescenta o `55` do
+Brasil; nos demais casos usa os digitos como estao. So devolve `null` (e a
+tela esconde o WhatsApp) quando o campo nao tem nenhum digito. Um numero sem
+DDD gera um link que o WhatsApp nao reconhece; por isso o cadastro de
+prestador pede o DDD.
+
+**Depois de registrar um pedido** (`/solicitar`): se o prestador escolhido tem
+WhatsApp, o formulario da lugar a tela "Pedido registrado!", que mostra a
+mensagem pronta e o botao "Enviar pelo WhatsApp" (abre em nova aba). O numero
+vem da lista de prestadores do formulario ou do perfil que abriu a tela
+(`?prestador=`). Sem prestador, ou com prestador sem WhatsApp, nada muda: a
+tela vai direto para `/meus-fretes`. Abrir `/solicitar` de novo a partir da
+tela de confirmacao (pelo rodape, por exemplo) traz o formulario em branco.
+
+O WhatsApp nao abre sozinho porque a nova aba so seria criada depois da
+resposta da API, e o navegador bloquearia como pop-up. Por isso o clique fica
+com o cliente.
+
+### 9.8 Design system e componentes de interface
+
+O visual foi definido com a skill **ui-ux-pro-max** (perfil de catalogo e
+logistica, estilo *flat*). As regras abaixo valem para qualquer tela nova.
+
+**Estilo.** Sem sombras e sem gradientes: a separacao e feita com bordas e
+contornos (`border`, `ring`). Transicoes de cor duram de 150 a 200 ms, e o
+`prefers-reduced-motion` desliga animacoes e transicoes.
+
+**Cores** (tokens no `@theme` de `index.css`; neutros na escala `slate`):
+
+| Token     | Uso                                          |
+| --------- | -------------------------------------------- |
+| `primary` | Acoes, links, foco e estados ativos          |
+| `accent`  | Marca e chamada principal sobre fundo escuro |
+| `navy`    | Hero, rodape e paineis de destaque           |
+
+Botoes `accent` usam texto `navy-950`, porque branco sobre laranja nao atinge
+4.5:1. O botao de WhatsApp usa `emerald-700`: o verde da marca do WhatsApp nao
+tem contraste suficiente com texto branco.
+
+**Fonte.** Plus Jakarta Sans Variable.
+
+**Icones.** Phosphor (`@phosphor-icons/react`), sempre pelos nomes com sufixo
+`Icon` (ex.: `TruckIcon`). Sao decorativos por padrao (secao 9.1). Um icone
+que carrega significado sozinho recebe `aria-hidden={false}`, `role="img"` e
+`aria-label`.
+
+**Componentes** em [`components/ui.tsx`](../src/components/ui.tsx):
+
+| Componente                                | Para que serve                                                 |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `Button`, `ButtonLink`, `buttonClasses()` | Botao; link com cara de botao; as mesmas classes para um `<a>` |
+| `Field`, `FieldSet`                       | Rotulo, dica e erro de um campo (ou de um grupo, com `legend`) |
+| `Input`, `Textarea`, `Select`             | Campos; recebem do `Field` os atributos `aria-*`               |
+| `Alert`, `ErrorNote`                      | Avisos (info, sucesso, atencao, erro)                          |
+| `Spinner`, `ButtonSpinner`, `Skeleton`    | Carregando: pagina, dentro do botao e espaco reservado         |
+| `Card`, `FormSection`, `PageHeader`       | Estrutura: cartao, bloco de formulario e titulo da pagina      |
+| `EmptyState`, `DetailItem`, `BackLink`    | Lista vazia, item de detalhe com icone e link de voltar        |
+
+Fora dele: `Badge` (status), `StatCard`, `VehicleIcon`, `ProviderCard`,
+`RatingStars`, `AuthShell` (moldura do login e do cadastro) e `Logo`.
+
+**Acessibilidade.**
+
+- Contraste minimo de 4.5:1. Texto secundario usa `slate-500`/`600` no fundo
+  claro e `slate-300`/`400` no navy.
+- O foco e sempre visivel. Dentro de `.surface-dark` o contorno fica branco.
+- O primeiro Tab leva ao link "Pular para o conteudo".
+- Areas de toque de 40 a 48 px (`min-h-10`, `min-h-11`, `min-h-12`).
+- Todo campo tem rotulo visivel (`Field`). O erro aparece abaixo do campo,
+  ligado por `aria-describedby`. No celular a fonte dos campos e de 16 px,
+  para o iOS nao dar zoom.
+- Nunca `<Link><Button /></Link>`: sao dois elementos interativos para a
+  mesma acao. Use `ButtonLink`, ou `buttonClasses()` num `<a>` externo.
+- Links que abrem nova aba avisam "(abre em nova aba)" para leitor de tela.
 
 ---
 
@@ -849,10 +951,13 @@ tecla.
 ### 10.2 Cliente contrata um frete
 
 1. O cliente busca em `/catalogo` e abre um perfil.
-2. Fala com o prestador direto pelo WhatsApp, telefone ou e-mail. Preco e
-   detalhes sao combinados entre os dois.
+2. Fala com o prestador direto pelo WhatsApp (o botao do perfil ja abre a
+   conversa com uma saudacao), telefone ou e-mail. Preco e detalhes sao
+   combinados entre os dois.
 3. Para registrar, clica em solicitar → `/solicitar?prestador=<id>` (precisa
-   estar logado) → `POST /api/freights`. O pedido nasce `ABERTA`.
+   estar logado) → `POST /api/freights`. O pedido nasce `ABERTA`. Se o
+   prestador tem WhatsApp, a tela seguinte oferece enviar os dados do pedido
+   numa mensagem pronta (secao 9.7).
 4. Acompanha em `/meus-fretes`. Pode cancelar enquanto `ABERTA` ou
    `EM_NEGOCIACAO`.
 5. A equipe acompanha em `/admin` e avanca o status:

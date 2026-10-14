@@ -1,31 +1,37 @@
 import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { ListIcon, SignOutIcon, XIcon } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
-import { Button } from "./ui";
+import { initials } from "../lib/format";
+import { Logo } from "./Logo";
+import { Button, ButtonLink, cx } from "./ui";
 
-function Logo() {
+const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cx(
+    "inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold transition-colors duration-150",
+    isActive
+      ? "bg-primary-50 text-primary-700"
+      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+  );
+
+const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cx(
+    "flex min-h-12 items-center rounded-lg px-3 text-base font-semibold transition-colors duration-150",
+    isActive
+      ? "bg-primary-50 text-primary-700"
+      : "text-slate-700 hover:bg-slate-100",
+  );
+
+function UserAvatar({ name }: { name: string }) {
   return (
-    <Link to="/" className="flex items-center gap-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-          <path d="M2 14h13V7a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7Zm13 0h3l3-3.5h-3a1 1 0 0 0-.8.4L15 14Z" />
-          <circle cx="6.5" cy="16.5" r="2" fill="none" stroke="#7c2d12" strokeWidth="1.5" />
-          <circle cx="16.5" cy="16.5" r="2" fill="none" stroke="#7c2d12" strokeWidth="1.5" />
-        </svg>
-      </span>
-      <span className="text-lg font-extrabold tracking-tight text-slate-900">
-        Frete<span className="text-brand-600">Hub</span>
-      </span>
-    </Link>
+    <span
+      aria-hidden="true"
+      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700"
+    >
+      {initials(name)}
+    </span>
   );
 }
-
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-md px-3 py-2 text-sm font-medium transition ${
-    isActive
-      ? "text-brand-700 bg-brand-50"
-      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-  }`;
 
 export function Navbar() {
   const { isAuthenticated, isAdmin, user, logout } = useAuth();
@@ -33,11 +39,12 @@ export function Navbar() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    setOpen(false);
     logout();
     navigate("/");
   };
 
-  const links = (
+  const links = (linkClass: typeof desktopLinkClass) => (
     <>
       <NavLink to="/catalogo" className={linkClass} onClick={() => setOpen(false)}>
         Catalogo
@@ -67,70 +74,93 @@ export function Navbar() {
   );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <div className="flex items-center gap-6">
-          <Logo />
-          <nav className="hidden items-center gap-1 md:flex">{links}</nav>
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
+        <div className="flex items-center gap-8">
+          <Logo onClick={() => setOpen(false)} />
+          <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
+            {links(desktopLinkClass)}
+          </nav>
         </div>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           {isAuthenticated ? (
             <>
-              <span className="text-sm text-slate-600">
-                Ola, <strong className="text-slate-800">{user?.name}</strong>
+              <span className="flex items-center gap-2.5 pr-2 text-sm text-slate-600">
+                <UserAvatar name={user?.name ?? ""} />
+                <span className="hidden lg:inline">
+                  Ola, <strong className="font-semibold text-slate-900">{user?.name}</strong>
+                </span>
+                <span className="sr-only lg:hidden">Conectado como {user?.name}</span>
               </span>
-              <Button variant="secondary" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <SignOutIcon weight="bold" className="size-4" />
                 Sair
               </Button>
             </>
           ) : (
             <>
-              <Link to="/login">
-                <Button variant="ghost">Entrar</Button>
-              </Link>
-              <Link to="/cadastro">
-                <Button>Criar conta</Button>
-              </Link>
+              <ButtonLink to="/login" variant="ghost" size="sm">
+                Entrar
+              </ButtonLink>
+              <ButtonLink to="/cadastro" size="sm">
+                Criar conta
+              </ButtonLink>
             </>
           )}
         </div>
 
         <button
-          className="rounded-md p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+          type="button"
+          className="-mr-2 inline-flex size-11 items-center justify-center rounded-lg text-slate-700 transition-colors duration-150 hover:bg-slate-100 md:hidden"
           onClick={() => setOpen((v) => !v)}
-          aria-label="Abrir menu"
+          aria-label="Menu"
           aria-expanded={open}
+          aria-controls={open ? "menu-mobile" : undefined}
         >
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-            {open ? (
-              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-            ) : (
-              <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
-            )}
-          </svg>
+          {open ? (
+            <XIcon weight="bold" className="size-6" />
+          ) : (
+            <ListIcon weight="bold" className="size-6" />
+          )}
         </button>
       </div>
 
       {open && (
-        <div className="border-t border-slate-200 bg-white px-4 py-3 md:hidden">
-          <nav className="flex flex-col gap-1">{links}</nav>
-          <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3">
+        <div
+          id="menu-mobile"
+          className="border-t border-slate-200 bg-white px-4 pb-5 pt-3 md:hidden"
+        >
+          <nav aria-label="Principal" className="flex flex-col gap-1">
+            {links(mobileLinkClass)}
+          </nav>
+          <div className="mt-4 border-t border-slate-100 pt-4">
             {isAuthenticated ? (
-              <Button variant="secondary" onClick={handleLogout}>
-                Sair ({user?.name})
-              </Button>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-3 text-sm text-slate-600">
+                  <UserAvatar name={user?.name ?? ""} />
+                  <span className="truncate">
+                    Ola, <strong className="font-semibold text-slate-900">{user?.name}</strong>
+                  </span>
+                </span>
+                <Button variant="secondary" onClick={handleLogout}>
+                  <SignOutIcon weight="bold" className="size-4" />
+                  Sair
+                </Button>
+              </div>
             ) : (
-              <>
-                <Link to="/login" onClick={() => setOpen(false)}>
-                  <Button variant="secondary" className="w-full">
-                    Entrar
-                  </Button>
-                </Link>
-                <Link to="/cadastro" onClick={() => setOpen(false)}>
-                  <Button className="w-full">Criar conta</Button>
-                </Link>
-              </>
+              <div className="grid grid-cols-2 gap-3">
+                <ButtonLink
+                  to="/login"
+                  variant="secondary"
+                  onClick={() => setOpen(false)}
+                >
+                  Entrar
+                </ButtonLink>
+                <ButtonLink to="/cadastro" onClick={() => setOpen(false)}>
+                  Criar conta
+                </ButtonLink>
+              </div>
             )}
           </div>
         </div>

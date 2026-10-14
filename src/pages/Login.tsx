@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { InfoIcon, SignInIcon } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
-import { Button, Field, Input } from "../components/ui";
+import { AuthShell } from "../components/AuthShell";
+import { Alert, Button, ButtonSpinner, Field, Input } from "../components/ui";
 
 export function Login() {
   const { login, sessionExpired } = useAuth();
@@ -29,21 +31,19 @@ export function Login() {
   };
 
   return (
-    <div className="mx-auto flex max-w-md flex-col px-4 py-16">
-      <h1 className="text-2xl font-bold text-slate-900">Entrar</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Acesse sua conta para solicitar fretes e avaliar prestadores.
-      </p>
-
+    <AuthShell
+      title="Entrar"
+      description="Acesse sua conta para solicitar fretes e avaliar prestadores."
+    >
       {sessionExpired && (
-        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+        <Alert tone="warning" className="mt-6">
           Sua sessao expirou. Entre novamente para continuar.
-        </p>
+        </Alert>
       )}
 
       <form
         onSubmit={handleSubmit}
-        className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8"
       >
         <Field label="E-mail" required>
           <Input
@@ -66,34 +66,51 @@ export function Login() {
           />
         </Field>
 
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200">
-            {error}
-          </p>
-        )}
+        {error && <Alert tone="danger">{error}</Alert>}
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          {loading ? (
+            <>
+              <ButtonSpinner />
+              Entrando...
+            </>
+          ) : (
+            <>
+              <SignInIcon weight="bold" className="size-5" />
+              Entrar
+            </>
+          )}
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-slate-600">
         Nao tem conta?{" "}
         <Link
           to="/cadastro"
-          className="font-semibold text-brand-600 hover:text-brand-700"
+          className="font-semibold text-primary-700 underline-offset-4 hover:text-primary-800 hover:underline"
         >
           Criar conta
         </Link>
       </p>
 
-      <div className="mt-6 rounded-xl bg-slate-100 px-4 py-3 text-xs text-slate-500">
-        <strong className="text-slate-700">Contas de demonstracao:</strong>
-        <br />
-        Admin: admin@fretehub.com / admin123
-        <br />
-        Cliente: cliente@fretehub.com / cliente123
+      <div className="mt-6 flex gap-3 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+        <InfoIcon weight="fill" className="mt-0.5 size-5 shrink-0 text-slate-500" />
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-800">Contas de demonstracao</p>
+          <dl className="mt-1 space-y-0.5">
+            <div className="flex flex-wrap gap-x-1.5">
+              <dt className="font-medium text-slate-700">Admin:</dt>
+              <dd className="min-w-0 break-words">admin@fretehub.com / admin123</dd>
+            </div>
+            <div className="flex flex-wrap gap-x-1.5">
+              <dt className="font-medium text-slate-700">Cliente:</dt>
+              <dd className="min-w-0 break-words">
+                cliente@fretehub.com / cliente123
+              </dd>
+            </div>
+          </dl>
+        </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

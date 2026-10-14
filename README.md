@@ -13,6 +13,8 @@ Equipe: Caio Monte Alegre, Lucas Silva Fagundes, Ricardo Panighel Lazarini.
 | ----------- | ----------------------------------------------- |
 | Build/UI    | React 18 + Vite + TypeScript                    |
 | Estilo      | Tailwind CSS v4                                 |
+| Icones      | Phosphor Icons                                  |
+| Fonte       | Plus Jakarta Sans                               |
 | Roteamento  | React Router v6                                 |
 | Dados/cache | TanStack React Query v5                         |
 | API         | Spring Boot 3.5 (`backend/`)                    |
@@ -91,14 +93,17 @@ nao exige Docker nem PostgreSQL no ar.
   - filtros por tipo de veiculo, regiao e servico;
   - paginacao na API.
 - **Perfil do prestador** com dados completos, regioes, servicos, avaliacoes e
-  **canais de contato direto** (WhatsApp / telefone / e-mail).
+  **canais de contato direto** (WhatsApp / telefone / e-mail). O botao de
+  WhatsApp abre a conversa com uma saudacao ja escrita.
 - **Cadastro de prestador** ("Seja um prestador") que entra como `PENDENTE`.
 - **Autenticacao** (cliente e admin) com JWT. O cliente da sessao fica no
   `localStorage` (`fretehub:auth`).
 - **Painel da equipe (admin)**: fluxo de curadoria para aprovar, rejeitar,
   desativar e reativar prestadores. Rota protegida por role `ADMIN`.
 - **Solicitacao de frete**: cliente logado registra origem, destino, data
-  e descricao da carga, com ou sem prestador escolhido.
+  e descricao da carga, com ou sem prestador escolhido. Se o prestador tem
+  WhatsApp, a confirmacao oferece enviar os dados do pedido numa
+  **mensagem pronta**.
 - **Acompanhamento**: o cliente ve o status em "Meus fretes" (aberta, em
   negociacao, confirmada, concluida ou cancelada) e pode cancelar enquanto
   o pedido ainda nao foi confirmado.
@@ -106,7 +111,9 @@ nao exige Docker nem PostgreSQL no ar.
   solicitacoes.
 - **Avaliacoes**: clientes logados podem avaliar prestadores — uma avaliacao
   por cliente e prestador.
-- Design **responsivo** (mobile/desktop).
+- Design **responsivo** (mobile/desktop) e acessivel (contraste AA, foco
+  visivel, navegacao por teclado), com design system proprio (secao 9.8 da
+  documentacao tecnica).
 
 ## Contas de demonstracao
 
@@ -132,6 +139,8 @@ src/                 # front-end
   lib/api.ts         # chamadas HTTP para a API
   lib/types.ts       # tipos que espelham o JSON da API
   lib/auth.tsx       # sessao (token JWT)
+  lib/whatsapp.ts    # links wa.me com mensagem pronta
+  components/ui.tsx  # componentes base do design system
 backend/             # Spring Boot
   src/main/java/com/fretehub/
   src/main/resources/db/migration/   # migrations Flyway (schema)

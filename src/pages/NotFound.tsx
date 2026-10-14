@@ -1,19 +1,25 @@
-import { Link } from "react-router-dom";
-import { Button } from "../components/ui";
+import { HouseIcon, SignpostIcon } from "@phosphor-icons/react";
+import { ButtonLink } from "../components/ui";
 
 export function NotFound() {
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-      <span className="text-6xl font-extrabold text-brand-600">404</span>
-      <h1 className="mt-2 text-xl font-bold text-slate-900">
+    <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-20 text-center sm:py-28">
+      <span className="flex size-16 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+        <SignpostIcon weight="duotone" className="size-8" />
+      </span>
+      <p className="mt-6 text-5xl font-extrabold tracking-tight text-primary-600">
+        404
+      </p>
+      <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
         Pagina nao encontrada
       </h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-2 text-base text-slate-600">
         O endereco que voce acessou nao existe ou foi movido.
       </p>
-      <Link to="/" className="mt-6">
-        <Button>Voltar ao inicio</Button>
-      </Link>
+      <ButtonLink to="/" size="lg" className="mt-8">
+        <HouseIcon weight="bold" className="size-5" />
+        Voltar ao inicio
+      </ButtonLink>
     </div>
   );
 }
