@@ -51,6 +51,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/providers").permitAll()
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/**").authenticated()
+            // Fora de /api so ha o front publicado (ver SpaConfig).
+            .requestMatchers(HttpMethod.GET, "/**").permitAll()
             .anyRequest().denyAll())
         .exceptionHandling(errors -> errors
             .authenticationEntryPoint((request, response, ex) -> {
