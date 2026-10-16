@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 class ProviderCurationApiTest extends ApiTestSupport {
 
-  // O seed traz 4 prestadores APROVADO e 2 PENDENTE.
+  // O seed traz 4 motoristas APROVADO e 2 PENDENTE.
   private static final int SEED_APPROVED = 4;
   private static final int SEED_TOTAL = 6;
   private static final String PENDING_PROVIDER = "p-005";
@@ -100,7 +100,8 @@ class ProviderCurationApiTest extends ApiTestSupport {
             .contentType(APPLICATION_JSON)
             .content(json(Map.of("status", "APROVADO"))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("APROVADO"));
+        .andExpect(jsonPath("$.status").value("APROVADO"))
+        .andExpect(jsonPath("$.documentsVerified").value(true));
 
     mockMvc
         .perform(get("/api/providers"))

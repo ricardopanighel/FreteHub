@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   ChatsCircleIcon,
   CheckCircleIcon,
@@ -11,6 +12,7 @@ import {
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import { createProvider, type NewProviderInput } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import type { ServiceTag, VehicleType } from "../lib/types";
 import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import {
@@ -24,6 +26,7 @@ import {
   Input,
   PageHeader,
   Select,
+  Switch,
   Textarea,
   cx,
   queryErrorMessage,
@@ -41,6 +44,7 @@ const emptyForm = {
   phone: "",
   whatsapp: "",
   email: "",
+  password: "",
 };
 
 type FormState = typeof emptyForm;
@@ -56,7 +60,7 @@ const STEPS = [
   },
   {
     title: "Seu perfil aparece no catalogo",
-    text: "Clientes encontram voce e entram em contato diretamente pelos canais informados.",
+    text: "Clientes enviam pedidos pelo app ou entram em contato diretamente, conforme sua escolha.",
   },
 ];
 
@@ -97,11 +101,16 @@ function RegistrationSent({ onReset }: { onReset: () => void }) {
 }
 
 export function ProviderRegister() {
+  const navigate = useNavigate();
+  const { isAuthenticated, registerDriver } = useAuth();
+  const [receiveInApp, setReceiveInApp] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [driverError, setDriverError] = useState<string | null>(null);
+  const [driverPending, setDriverPending] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: (input: NewProviderInput) => createProvider(input),
+    mutationFn: createProvider,
   });
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -124,16 +133,21 @@ export function ProviderRegister() {
     if (!form.regions.trim()) e.regions = "Informe ao menos uma regiao.";
     if (form.services.length === 0)
       e.services = "Selecione ao menos um servico.";
-    if (!form.whatsapp.trim() && !form.phone.trim() && !form.email.trim())
-      e.contacts = "Informe ao menos um canal de contato.";
+    if (!form.whatsapp.trim() && !form.phone.trim() && (receiveInApp || !form.email.trim()))
+      e.contacts = receiveInApp ? "Informe WhatsApp ou telefone para receber pedidos." : "Informe ao menos um canal de contato.";
+    if (receiveInApp && !form.email.trim()) e.email = "Informe o e-mail da conta.";
+    else if (receiveInApp && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+      e.email = "Informe um e-mail valido.";
+    if (receiveInApp && form.password.length < 6)
+      e.password = "A senha deve ter ao menos 6 caracteres.";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
-    mutation.mutate({
+    const input: NewProviderInput = {
       name: form.name.trim(),
       headline: form.headline.trim(),
       bio: form.bio.trim(),
@@ -152,10 +166,24 @@ export function ProviderRegister() {
         whatsapp: form.whatsapp.trim() || undefined,
         email: form.email.trim() || undefined,
       },
-    });
+    };
+    if (!receiveInApp) {
+      mutation.mutate(input);
+      return;
+    }
+    setDriverError(null);
+    setDriverPending(true);
+    try {
+      await registerDriver(form.email.trim(), form.password, input);
+      navigate("/painel-motorista", { replace: true });
+    } catch (error) {
+      setDriverError(error instanceof Error ? error.message : "Nao foi possivel criar a conta.");
+    } finally {
+      setDriverPending(false);
+    }
   };
 
-  if (mutation.isSuccess) {
+  if (mutation.isSuccess && !receiveInApp) {
     return (
       <RegistrationSent
         onReset={() => {
@@ -169,8 +197,8 @@ export function ProviderRegister() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
       <PageHeader
-        title="Seja um prestador"
-        description="Preencha seus dados. Apos a validacao da nossa equipe, seu perfil fica disponivel no catalogo publico."
+        title="Seja um motorista"
+        description="Cadastre seu perfil para receber pedidos pelo app ou aparecer no diretorio de contato direto. Ambos passam pela curadoria."
       />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
@@ -206,7 +234,19 @@ export function ProviderRegister() {
           onSubmit={handleSubmit}
           className="space-y-6 lg:col-start-1 lg:row-start-1"
         >
-          <FormSection icon={IdentificationBadgeIcon} title="Dados do prestador">
+          <FormSection icon={IdentificationBadgeIcon} title="Forma de atendimento">
+            <Switch checked={receiveInApp} onChange={(value) => { setReceiveInApp(value); setDriverError(null); mutation.reset(); }} label="Receber pedidos pelo app" />
+            <p className="text-sm text-slate-600">
+              {receiveInApp
+                ? "Crie uma conta para aceitar, recusar ou contrapropor pedidos no painel do motorista."
+                : "Seu perfil aparece no diretorio com os contatos para falar diretamente com clientes."}
+            </p>
+            {isAuthenticated && receiveInApp && (
+              <Alert tone="warning">Ao criar a conta de motorista, sua sessao atual sera trocada pela nova conta.</Alert>
+            )}
+          </FormSection>
+
+          <FormSection icon={IdentificationBadgeIcon} title="Dados do motorista">
             <Field label="Nome / nome do servico" required error={errors.name}>
               <Input
                 value={form.name}
@@ -299,7 +339,7 @@ export function ProviderRegister() {
                       aria-pressed={active}
                       onClick={() => toggleService(tag)}
                       className={cx(
-                        "inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-medium ring-1 ring-inset transition-colors duration-150",
+                        "inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium ring-1 ring-inset transition-colors duration-150",
                         active
                           ? "bg-primary-600 text-white ring-primary-600 hover:bg-primary-700"
                           : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50 hover:ring-slate-400",
@@ -321,7 +361,9 @@ export function ProviderRegister() {
           <FormSection
             icon={ChatsCircleIcon}
             title="Canais de contato"
-            description="Informe ao menos um canal. Com WhatsApp, o cliente pode mandar os dados do pedido em uma mensagem pronta."
+            description={receiveInApp
+              ? "Informe WhatsApp ou telefone. Seu contato aparece para o cliente depois que voce aceita o pedido."
+              : "Informe ao menos um canal para contato direto dos clientes."}
           >
             {errors.contacts && (
               <p className="flex items-start gap-1.5 text-sm font-medium text-red-700">
@@ -349,22 +391,28 @@ export function ProviderRegister() {
                 />
               </Field>
               <div className="sm:col-span-2">
-                <Field label="E-mail">
+                <Field label={receiveInApp ? "E-mail da conta" : "E-mail de contato"} required={receiveInApp} error={errors.email}>
                   <Input
                     type="email"
                     autoComplete="email"
                     value={form.email}
                     onChange={(e) => set("email", e.target.value)}
                     placeholder="contato@email.com"
+                    required={receiveInApp}
                   />
                 </Field>
               </div>
             </div>
+            {receiveInApp && (
+              <Field label="Senha" required error={errors.password} hint="Minimo de 6 caracteres.">
+                <Input type="password" autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} />
+              </Field>
+            )}
           </FormSection>
 
-          {mutation.isError && (
+          {(mutation.isError || driverError) && (
             <Alert tone="danger">
-              {queryErrorMessage(
+              {driverError ?? queryErrorMessage(
                 mutation.error,
                 "Nao foi possivel enviar o cadastro. Tente novamente.",
               )}
@@ -375,8 +423,8 @@ export function ProviderRegister() {
             <ButtonLink to="/" variant="secondary" size="lg">
               Cancelar
             </ButtonLink>
-            <Button type="submit" size="lg" disabled={mutation.isPending}>
-              {mutation.isPending ? (
+            <Button type="submit" size="lg" disabled={mutation.isPending || driverPending}>
+              {mutation.isPending || driverPending ? (
                 <>
                   <ButtonSpinner />
                   Enviando...
@@ -384,7 +432,7 @@ export function ProviderRegister() {
               ) : (
                 <>
                   <PaperPlaneTiltIcon weight="bold" className="size-5" />
-                  Enviar para validacao
+                  {receiveInApp ? "Criar conta de motorista" : "Enviar para validacao"}
                 </>
               )}
             </Button>

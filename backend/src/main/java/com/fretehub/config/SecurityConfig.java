@@ -48,10 +48,16 @@ public class SecurityConfig {
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/providers", "/api/providers/*", "/api/regions").permitAll()
+            .requestMatchers("/error").permitAll()
+            .requestMatchers(HttpMethod.POST,
+                "/api/auth/login", "/api/auth/register", "/api/auth/register-driver").permitAll()
+            .requestMatchers(HttpMethod.GET,
+                "/api/providers", "/api/providers/*", "/api/regions", "/api/cities").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/providers").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/providers/*/reviews").hasRole("CLIENTE")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
+            .requestMatchers("/api/driver/**").hasRole("MOTORISTA")
+            .requestMatchers("/api/freights/**").hasRole("CLIENTE")
             .requestMatchers("/api/**").authenticated()
             .anyRequest().denyAll())
         .exceptionHandling(errors -> errors

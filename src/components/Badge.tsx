@@ -1,15 +1,17 @@
 import type { ReactNode } from "react";
 import {
-  ChatsCircleIcon,
   CheckCircleIcon,
   ClockIcon,
+  ArrowsLeftRightIcon,
+  TruckIcon,
+  UserFocusIcon,
   HourglassMediumIcon,
   ProhibitIcon,
   SealCheckIcon,
   XCircleIcon,
   type Icon,
 } from "@phosphor-icons/react";
-import type { FreightStatus, ProviderStatus } from "../lib/types";
+import type { FreightStatus, ProviderStatus, ProviderType } from "../lib/types";
 import { FREIGHT_STATUS_LABELS, STATUS_LABELS } from "../lib/types";
 import { cx } from "./ui";
 
@@ -57,11 +59,14 @@ export function Badge({
 
 // Cada status tem cor e icone proprios, para nao depender so da cor.
 const FREIGHT_STATUS: Record<FreightStatus, { tone: BadgeTone; icon: Icon }> = {
-  ABERTA: { tone: "warning", icon: ClockIcon },
-  EM_NEGOCIACAO: { tone: "primary", icon: ChatsCircleIcon },
-  CONFIRMADA: { tone: "success", icon: CheckCircleIcon },
-  CONCLUIDA: { tone: "neutral", icon: SealCheckIcon },
-  CANCELADA: { tone: "danger", icon: XCircleIcon },
+  PENDENTE: { tone: "warning", icon: ClockIcon },
+  CONTRAPROPOSTA: { tone: "primary", icon: ArrowsLeftRightIcon },
+  ACEITO: { tone: "success", icon: CheckCircleIcon },
+  RECUSADO: { tone: "danger", icon: XCircleIcon },
+  EXPIRADO: { tone: "neutral", icon: HourglassMediumIcon },
+  EM_ANDAMENTO: { tone: "primary", icon: TruckIcon },
+  CONCLUIDO: { tone: "success", icon: SealCheckIcon },
+  CANCELADO: { tone: "neutral", icon: ProhibitIcon },
 };
 
 const PROVIDER_STATUS: Record<ProviderStatus, { tone: BadgeTone; icon: Icon }> = {
@@ -86,6 +91,14 @@ export function StatusBadge({ status }: { status: ProviderStatus }) {
     <Badge tone={tone} icon={icon}>
       {STATUS_LABELS[status]}
     </Badge>
+  );
+}
+
+export function ProviderTypeBadge({ type }: { type: ProviderType }) {
+  return type === "INTERNO" ? (
+    <Badge tone="primary" icon={CheckCircleIcon}>Contratar no App</Badge>
+  ) : (
+    <Badge tone="neutral" icon={UserFocusIcon}>Contato Direto</Badge>
   );
 }
 

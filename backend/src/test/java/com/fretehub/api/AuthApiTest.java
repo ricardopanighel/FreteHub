@@ -62,6 +62,16 @@ class AuthApiTest extends ApiTestSupport {
   }
 
   @Test
+  void loginMotoristaDevolvePapelMotorista() throws Exception {
+    mockMvc
+        .perform(post("/api/auth/login")
+            .contentType(APPLICATION_JSON)
+            .content(json(Map.of("email", DRIVER_EMAIL, "password", DRIVER_PASSWORD))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.user.role").value("MOTORISTA"));
+  }
+
+  @Test
   void loginComSenhaErradaRetorna401() throws Exception {
     mockMvc
         .perform(post("/api/auth/login")

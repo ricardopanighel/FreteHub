@@ -4,6 +4,7 @@ import com.fretehub.web.Dtos.ProviderInput;
 import com.fretehub.web.Dtos.ProviderPage;
 import com.fretehub.web.Dtos.ProviderStatusInput;
 import com.fretehub.web.Dtos.ProviderView;
+import com.fretehub.domain.Enums.ProviderType;
 import com.fretehub.web.Dtos.ReviewInput;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,9 +32,18 @@ public class ProviderController {
       @RequestParam(defaultValue = "") String vehicleType,
       @RequestParam(defaultValue = "") String region,
       @RequestParam(defaultValue = "") String service,
+      @RequestParam(required = false) ProviderType type,
+      @RequestParam(required = false) Boolean available,
+      @RequestParam(defaultValue = "") String city,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "9") int pageSize) {
-    return providerService.listPublic(search, vehicleType, region, service, page, pageSize);
+    return providerService.listPublic(
+        search, vehicleType, region, service, type, available, city, page, pageSize);
+  }
+
+  @GetMapping("/cities")
+  public List<String> cities() {
+    return providerService.listCities();
   }
 
   @GetMapping("/regions")

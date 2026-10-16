@@ -4,17 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightIcon,
   CalendarBlankIcon,
-  ChatsCircleIcon,
   CheckCircleIcon,
   ClockIcon,
   TruckIcon,
   UserIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { listAllFreights, updateFreightStatus } from "../lib/api";
+import { listAllFreights, listAllProviders, updateFreightStatus } from "../lib/api";
 import type { FreightRequest, FreightStatus } from "../lib/types";
 import { FREIGHT_STATUS_LABELS } from "../lib/types";
-import { formatDay } from "../lib/format";
+import { formatMoney, formatScheduledAt } from "../lib/format";
 import { FreightStatusBadge } from "../components/Badge";
 import { StatCard } from "../components/StatCard";
 import {
@@ -29,9 +28,8 @@ import {
 } from "../components/ui";
 
 const NEXT_STATUS: Partial<Record<FreightStatus, FreightStatus>> = {
-  ABERTA: "EM_NEGOCIACAO",
-  EM_NEGOCIACAO: "CONFIRMADA",
-  CONFIRMADA: "CONCLUIDA",
+  ACEITO: "EM_ANDAMENTO",
+  EM_ANDAMENTO: "CONCLUIDO",
 };
 
 export function AdminFreights() {
@@ -39,6 +37,9 @@ export function AdminFreights() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["freights", "all"],
     queryFn: listAllFreights,
+  });
+  const { data: providers } = useQuery({
+    queryKey: ["admin", "providers"], queryFn: listAllProviders,
   });
 
   const mutation = useMutation({
@@ -52,20 +53,19 @@ export function AdminFreights() {
   const stats = useMemo(() => {
     const list = data ?? [];
     return {
-      abertas: list.filter((f) => f.status === "ABERTA").length,
-      negociacao: list.filter((f) => f.status === "EM_NEGOCIACAO").length,
-      confirmadas: list.filter((f) => f.status === "CONFIRMADA").length,
+      pendentes: list.filter((f) => f.status === "PENDENTE").length,
+      andamento: list.filter((f) => f.status === "EM_ANDAMENTO").length,
+      aceitos: list.filter((f) => f.status === "ACEITO").length,
     };
   }, [data]);
 
   const actionsFor = (freight: FreightRequest) => {
-    const next = NEXT_STATUS[freight.status];
+    const provider = providers?.find((item) => item.id === freight.providerId);
+    const next = provider?.type === "EXTERNO" ? NEXT_STATUS[freight.status] : undefined;
     const busy = mutation.isPending && mutation.variables?.id === freight.id;
     const pendingStatus = busy ? mutation.variables?.status : undefined;
     const canCancel =
-      freight.status === "ABERTA" ||
-      freight.status === "EM_NEGOCIACAO" ||
-      freight.status === "CONFIRMADA";
+      ["PENDENTE", "CONTRAPROPOSTA", "ACEITO", "EM_ANDAMENTO"].includes(freight.status);
 
     return (
       <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -90,10 +90,10 @@ export function AdminFreights() {
             size="sm"
             disabled={busy}
             onClick={() =>
-              mutation.mutate({ id: freight.id, status: "CANCELADA" })
+              mutation.mutate({ id: freight.id, status: "CANCELADO" })
             }
           >
-            {pendingStatus === "CANCELADA" ? (
+            {pendingStatus === "CANCELADO" ? (
               <ButtonSpinner />
             ) : (
               <XIcon weight="bold" className="size-4" />
@@ -108,16 +108,16 @@ export function AdminFreights() {
   return (
     <div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Abertas" value={stats.abertas} icon={ClockIcon} tone="warning" />
+        <StatCard label="Pendentes" value={stats.pendentes} icon={ClockIcon} tone="warning" />
         <StatCard
-          label="Em negociacao"
-          value={stats.negociacao}
-          icon={ChatsCircleIcon}
+          label="Em andamento"
+          value={stats.andamento}
+          icon={TruckIcon}
           tone="primary"
         />
         <StatCard
-          label="Confirmadas"
-          value={stats.confirmadas}
+          label="Aceitos"
+          value={stats.aceitos}
           icon={CheckCircleIcon}
           tone="success"
         />
@@ -159,21 +159,22 @@ export function AdminFreights() {
                       {freight.clientName}
                     </DetailItem>
                     <DetailItem icon={CalendarBlankIcon} label="Data desejada">
-                      {formatDay(freight.scheduledDate)}
+                      {formatScheduledAt(freight.scheduledAt)}
                     </DetailItem>
-                    <DetailItem icon={TruckIcon} label="Prestador">
+                    <DetailItem icon={TruckIcon} label="Motorista">
                       {freight.providerId ? (
                         <Link
-                          to={`/prestador/${freight.providerId}`}
+                          to={`/motorista/${freight.providerId}`}
                           className="font-medium text-primary-700 underline-offset-4 hover:text-primary-800 hover:underline"
                         >
                           {freight.providerName}
                         </Link>
                       ) : (
-                        "Sem prestador"
+                        "Fila de motoristas"
                       )}
                     </DetailItem>
                   </dl>
+                  <p className="mt-2 text-sm text-slate-700">Oferta: {formatMoney(freight.priceOffered)}{freight.agreedPrice != null && ` | Combinado: ${formatMoney(freight.agreedPrice)}`}</p>
                   <p className="mt-2 break-words text-sm leading-relaxed text-slate-700">
                     {freight.description}
                   </p>

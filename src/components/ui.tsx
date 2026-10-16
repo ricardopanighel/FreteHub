@@ -56,9 +56,9 @@ const BUTTON_VARIANTS: Record<Variant, string> = {
     "text-white ring-1 ring-inset ring-white/30 hover:bg-white/10 active:bg-white/15",
 };
 
-// Alturas minimas de 40/44/48px para toque; o texto pode quebrar linha.
+// Alturas minimas de 44/44/48px para toque; o texto pode quebrar linha.
 const BUTTON_SIZES: Record<Size, string> = {
-  sm: "min-h-10 gap-1.5 rounded-lg px-3.5 py-2 text-sm",
+  sm: "min-h-11 gap-1.5 rounded-lg px-3.5 py-2 text-sm",
   md: "min-h-11 gap-2 rounded-lg px-4 py-2.5 text-sm",
   lg: "min-h-12 gap-2 rounded-xl px-6 py-3 text-base",
 };
@@ -77,6 +77,37 @@ export function buttonClasses({
     BUTTON_VARIANTS[variant],
     BUTTON_SIZES[size],
     className,
+  );
+}
+
+export function Switch({
+  checked,
+  onChange,
+  label,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className="inline-flex min-h-11 items-center gap-3 rounded-lg text-left text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <span aria-hidden="true" className={cx(
+        "flex h-7 w-12 items-center rounded-full p-1 ring-1 ring-inset transition-colors duration-150",
+        checked ? "bg-primary-600 ring-primary-600" : "bg-slate-300 ring-slate-400",
+      )}>
+        <span className={cx("size-5 rounded-full bg-white transition-transform duration-150", checked && "translate-x-5")} />
+      </span>
+      {label}
+    </button>
   );
 }
 

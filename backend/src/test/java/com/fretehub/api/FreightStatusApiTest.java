@@ -7,114 +7,93 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.HashMap;
+import com.fretehub.freight.FreightOrder;
+import com.fretehub.provider.ProviderRepository;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 class FreightStatusApiTest extends ApiTestSupport {
+  @Autowired ProviderRepository providers;
 
-  private String createFreight(String clientToken) throws Exception {
-    Map<String, Object> body = new HashMap<>();
-    body.put("origin", "Santos - Centro");
-    body.put("destination", "Sao Vicente - Centro");
-    body.put("description", "Mudanca pequena com alguns moveis e caixas.");
-    body.put("scheduledDate", "2030-01-01");
-    String response = mockMvc
-        .perform(post("/api/freights")
-            .header(AUTHORIZATION, bearer(clientToken))
-            .contentType(APPLICATION_JSON)
-            .content(json(body)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("ABERTA"))
-        .andReturn()
-        .getResponse()
-        .getContentAsString();
-    return objectMapper.readTree(response).get("id").asText();
-  }
-
-  private void patchStatus(String id, String token, String status, int expected) throws Exception {
-    mockMvc
-        .perform(patch("/api/admin/freights/" + id)
-            .header(AUTHORIZATION, bearer(token))
-            .contentType(APPLICATION_JSON)
-            .content(json(Map.of("status", status))))
+  private void patchStatus(String id, String token, String next, int expected) throws Exception {
+    mockMvc.perform(patch("/api/admin/freights/" + id)
+        .header(AUTHORIZATION, bearer(token))
+        .contentType(APPLICATION_JSON)
+        .content(json(Map.of("status", next))))
         .andExpect(status().is(expected));
   }
 
   @Test
-  void adminAvancaUmPasso() throws Exception {
+  void adminCancelaPedidoPendente() throws Exception {
     String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
     String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
-    String id = createFreight(client);
-
-    mockMvc
-        .perform(patch("/api/admin/freights/" + id)
-            .header(AUTHORIZATION, bearer(admin))
-            .contentType(APPLICATION_JSON)
-            .content(json(Map.of("status", "EM_NEGOCIACAO"))))
+    String id = createFreight(client, "p-001");
+    mockMvc.perform(patch("/api/admin/freights/" + id)
+        .header(AUTHORIZATION, bearer(admin))
+        .contentType(APPLICATION_JSON)
+        .content(json(Map.of("status", "CANCELADO"))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("EM_NEGOCIACAO"));
+        .andExpect(jsonPath("$.status").value("CANCELADO"));
   }
 
   @Test
-  void transicaoInvalidaEhRejeitada() throws Exception {
+  void adminAvancaPedidoAntigoAceito() throws Exception {
+    String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+    FreightOrder legacy = freights.findById("f-001").orElseThrow();
+    legacy.setProvider(providers.findById("p-003").orElseThrow());
+    freights.saveAndFlush(legacy);
+    patchStatus("f-001", admin, "EM_ANDAMENTO", 200);
+    patchStatus("f-001", admin, "CONCLUIDO", 200);
+  }
+
+  @Test
+  void adminNaoPulaEtapa() throws Exception {
     String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
     String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
-    String id = createFreight(client);
-
-    // ABERTA -> CONFIRMADA pula uma etapa.
-    patchStatus(id, admin, "CONFIRMADA", 400);
+    String id = createFreight(client, "p-001");
+    patchStatus(id, admin, "CONCLUIDO", 400);
   }
 
   @Test
   void clienteNaoMudaStatusPorRotaDeAdmin() throws Exception {
     String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
-    String id = createFreight(client);
-    patchStatus(id, client, "EM_NEGOCIACAO", 403);
+    String id = createFreight(client, "p-001");
+    patchStatus(id, client, "CANCELADO", 403);
   }
 
   @Test
-  void clienteCancelaAntesDaConfirmacao() throws Exception {
+  void clienteCancelaAntesDoAceite() throws Exception {
     String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
-    String id = createFreight(client);
-
-    mockMvc
-        .perform(post("/api/freights/" + id + "/cancel").header(AUTHORIZATION, bearer(client)))
+    String id = createFreight(client, "p-001");
+    mockMvc.perform(post("/api/freights/" + id + "/cancel")
+        .header(AUTHORIZATION, bearer(client)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("CANCELADA"));
+        .andExpect(jsonPath("$.status").value("CANCELADO"));
   }
 
   @Test
-  void naoCancelaDepoisDeConfirmada() throws Exception {
+  void clienteNaoCancelaFreteEmAndamento() throws Exception {
     String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
-    String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
-    String id = createFreight(client);
-
-    patchStatus(id, admin, "EM_NEGOCIACAO", 200);
-    patchStatus(id, admin, "CONFIRMADA", 200);
-
-    mockMvc
-        .perform(post("/api/freights/" + id + "/cancel").header(AUTHORIZATION, bearer(client)))
-        .andExpect(status().isBadRequest());
+    String driver = login(DRIVER_EMAIL, DRIVER_PASSWORD);
+    String id = createFreight(client, "p-001");
+    mockMvc.perform(post("/api/driver/freights/" + id + "/accept")
+        .header(AUTHORIZATION, bearer(driver)))
+        .andExpect(status().isOk());
+    mockMvc.perform(post("/api/driver/freights/" + id + "/start")
+        .header(AUTHORIZATION, bearer(driver)))
+        .andExpect(status().isOk());
+    mockMvc.perform(post("/api/freights/" + id + "/cancel")
+        .header(AUTHORIZATION, bearer(client)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.message").value("Este pedido nao pode mais ser cancelado."));
   }
 
   @Test
-  void naoDonoNaoCancela() throws Exception {
-    String owner = login(CLIENT_EMAIL, CLIENT_PASSWORD);
-    String id = createFreight(owner);
-
-    mockMvc
-        .perform(post("/api/auth/register")
-            .contentType(APPLICATION_JSON)
-            .content(json(Map.of(
-                "name", "Outro Cliente",
-                "email", "outro.cliente@example.com",
-                "password", "segredo123"))))
-        .andExpect(status().isOk());
-    String intruder = login("outro.cliente@example.com", "segredo123");
-
-    mockMvc
-        .perform(post("/api/freights/" + id + "/cancel").header(AUTHORIZATION, bearer(intruder)))
-        .andExpect(status().isForbidden());
+  void clienteNaoCancelaDepoisDeConcluido() throws Exception {
+    String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
+    mockMvc.perform(post("/api/freights/f-002/cancel")
+        .header(AUTHORIZATION, bearer(client)))
+        .andExpect(status().isConflict());
   }
 }

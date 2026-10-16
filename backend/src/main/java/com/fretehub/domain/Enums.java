@@ -29,16 +29,25 @@ public final class Enums {
     INATIVO
   }
 
+  public enum ProviderType {
+    INTERNO,
+    EXTERNO
+  }
+
   public enum FreightStatus {
-    ABERTA,
-    EM_NEGOCIACAO,
-    CONFIRMADA,
-    CONCLUIDA,
-    CANCELADA
+    PENDENTE,
+    CONTRAPROPOSTA,
+    ACEITO,
+    RECUSADO,
+    EXPIRADO,
+    EM_ANDAMENTO,
+    CONCLUIDO,
+    CANCELADO
   }
 
   public enum UserRole {
     CLIENTE,
+    MOTORISTA,
     ADMIN
   }
 }

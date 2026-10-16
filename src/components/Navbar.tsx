@@ -2,13 +2,14 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { ListIcon, SignOutIcon, XIcon } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
+import { useClientFreights, useDriverFreights } from "../lib/freightQueries";
 import { initials } from "../lib/format";
 import { Logo } from "./Logo";
 import { Button, ButtonLink, cx } from "./ui";
 
 const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
   cx(
-    "inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold transition-colors duration-150",
+    "inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold transition-colors duration-150",
     isActive
       ? "bg-primary-50 text-primary-700"
       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -33,8 +34,24 @@ function UserAvatar({ name }: { name: string }) {
   );
 }
 
+// O numero e so visual; o leitor de tela ouve a frase junto com o link.
+function ActionCount({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="ml-2 rounded-full bg-accent-500 px-2 py-0.5 text-xs font-bold text-navy-950">
+      <span aria-hidden="true">{count}</span>
+      <span className="sr-only">, {count} {count === 1 ? "pedido aguarda" : "pedidos aguardam"} sua resposta</span>
+    </span>
+  );
+}
+
 export function Navbar() {
-  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+  const { isAuthenticated, isAdmin, isClient, isDriver, user, logout } = useAuth();
+  const clientFreights = useClientFreights();
+  const driverFreights = useDriverFreights();
+  const actionCount = isDriver
+    ? driverFreights.data?.filter((f) => f.status === "PENDENTE").length ?? 0
+    : isClient ? clientFreights.data?.filter((f) => f.status === "CONTRAPROPOSTA").length ?? 0 : 0;
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -49,22 +66,21 @@ export function Navbar() {
       <NavLink to="/catalogo" className={linkClass} onClick={() => setOpen(false)}>
         Catalogo
       </NavLink>
-      {isAuthenticated && !isAdmin && (
+      {isClient && (
         <NavLink
           to="/meus-fretes"
           className={linkClass}
           onClick={() => setOpen(false)}
         >
-          Meus fretes
+          Minhas solicitacoes
+          <ActionCount count={actionCount} />
         </NavLink>
       )}
-      <NavLink
-        to="/seja-prestador"
-        className={linkClass}
-        onClick={() => setOpen(false)}
-      >
-        Seja um prestador
-      </NavLink>
+      {isDriver && <NavLink to="/painel-motorista" className={linkClass} onClick={() => setOpen(false)}>
+        Painel do motorista
+        <ActionCount count={actionCount} />
+      </NavLink>}
+      {!isDriver && !isAdmin && <NavLink to="/seja-motorista" className={linkClass} onClick={() => setOpen(false)}>Seja um motorista</NavLink>}
       {isAdmin && (
         <NavLink to="/admin" className={linkClass} onClick={() => setOpen(false)}>
           Painel da equipe

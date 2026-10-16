@@ -21,8 +21,10 @@ export function Login() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      navigate(from, { replace: true });
+      const user = await login(email, password);
+      const home = user.role === "MOTORISTA" ? "/painel-motorista" : user.role === "ADMIN" ? "/admin" : "/";
+      const allowedFrom = user.role === "CLIENTE" && (from.startsWith("/solicitar") || from.startsWith("/meus-fretes"));
+      navigate(allowedFrom ? from : home, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao entrar.");
     } finally {
@@ -33,7 +35,7 @@ export function Login() {
   return (
     <AuthShell
       title="Entrar"
-      description="Acesse sua conta para solicitar fretes e avaliar prestadores."
+      description="Acesse sua conta para solicitar fretes, responder pedidos ou gerenciar cadastros."
     >
       {sessionExpired && (
         <Alert tone="warning" className="mt-6">
@@ -87,6 +89,7 @@ export function Login() {
         Nao tem conta?{" "}
         <Link
           to="/cadastro"
+          state={from !== "/" ? { from } : undefined}
           className="font-semibold text-primary-700 underline-offset-4 hover:text-primary-800 hover:underline"
         >
           Criar conta
@@ -107,6 +110,10 @@ export function Login() {
               <dd className="min-w-0 break-words">
                 cliente@fretehub.com / cliente123
               </dd>
+            </div>
+            <div className="flex flex-wrap gap-x-1.5">
+              <dt className="font-medium text-slate-700">Motorista:</dt>
+              <dd className="min-w-0 break-words">motorista@fretehub.com / motorista123</dd>
             </div>
           </dl>
         </div>

@@ -1,21 +1,28 @@
 import { Link } from "react-router-dom";
-import { MapPinIcon, SealCheckIcon, StarIcon } from "@phosphor-icons/react";
+import { MapPinIcon, PhoneIcon, SealCheckIcon, StarIcon, WhatsappLogoIcon } from "@phosphor-icons/react";
 import type { Provider } from "../lib/types";
 import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import { averageRating, formatRating } from "./RatingStars";
 import { VehicleIcon } from "./VehicleIcon";
 import { Skeleton } from "./ui";
+import { ButtonLink, buttonClasses } from "./ui";
+import { ProviderTypeBadge } from "./Badge";
+import { onlyDigits } from "../lib/format";
+import { profileGreeting, whatsappLink, whatsappNumber } from "../lib/whatsapp";
+import { useAuth } from "../lib/auth";
 
 const VISIBLE_SERVICES = 3;
 
 // O card inteiro e clicavel, mas o link e so o nome: leitores de tela anunciam
 // "Carlos Transportes" em vez do texto do card todo.
 export function ProviderCard({ provider }: { provider: Provider }) {
+  const { isAuthenticated, isClient } = useAuth();
   const avg = averageRating(provider.reviews);
   const hiddenServices = provider.services.length - VISIBLE_SERVICES;
+  const wa = whatsappNumber(provider.contacts?.whatsapp);
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors duration-200 hover:border-primary-300 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-primary-600">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors duration-200 hover:border-primary-300 has-[h3_a:focus-visible]:outline-2 has-[h3_a:focus-visible]:outline-offset-2 has-[h3_a:focus-visible]:outline-primary-600">
       <div className="relative aspect-[16/10] bg-slate-100">
         <img
           src={provider.photoUrl}
@@ -31,13 +38,14 @@ export function ProviderCard({ provider }: { provider: Provider }) {
           />
           {VEHICLE_LABELS[provider.vehicleType]}
         </span>
+        <span className="absolute right-3 top-3"><ProviderTypeBadge type={provider.type} /></span>
       </div>
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="flex items-center gap-1.5 text-base font-semibold text-slate-900">
             <Link
-              to={`/prestador/${provider.id}`}
+              to={`/motorista/${provider.id}`}
               className="transition-colors duration-150 after:absolute after:inset-0 group-hover:text-primary-700 focus-visible:outline-hidden"
             >
               {provider.name}
@@ -91,6 +99,18 @@ export function ProviderCard({ provider }: { provider: Provider }) {
           <span className="sr-only">Atende em:</span>
           <span className="line-clamp-2">{provider.regions.join(", ")}</span>
         </p>
+        <div className="relative z-10 mt-4 flex flex-wrap gap-2">
+          {provider.type === "INTERNO" ? provider.available && (isClient || !isAuthenticated) ? (
+            <ButtonLink to={`/solicitar?motorista=${provider.id}`} size="sm" className="flex-1">Solicitar frete</ButtonLink>
+          ) : !provider.available ? (
+            <span className="inline-flex min-h-11 items-center text-sm font-medium text-slate-600">Indisponivel agora</span>
+          ) : null : (
+            <>
+              {wa && <a className={buttonClasses({ variant: "whatsapp", size: "sm" })} href={whatsappLink(wa, profileGreeting())} target="_blank" rel="noreferrer"><WhatsappLogoIcon weight="fill" className="size-4" />WhatsApp<span className="sr-only"> (abre em nova aba)</span></a>}
+              {provider.contacts?.phone && <a className={buttonClasses({ variant: "secondary", size: "sm" })} href={`tel:${onlyDigits(provider.contacts.phone)}`}><PhoneIcon weight="bold" className="size-4" />Ligar</a>}
+            </>
+          )}
+        </div>
       </div>
     </article>
   );

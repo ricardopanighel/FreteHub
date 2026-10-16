@@ -7,11 +7,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "./types";
+import type { NewProviderInput } from "./api";
 import {
   SESSION_EXPIRED_EVENT,
   login as apiLogin,
   registerClient as apiRegister,
+  registerDriver as apiRegisterDriver,
 } from "./api";
 
 interface AuthState {
@@ -22,10 +25,13 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isClient: boolean;
+  isDriver: boolean;
   // true quando a sessao caiu sozinha (token expirado ou recusado pela API).
   sessionExpired: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  registerDriver: (email: string, password: string, provider: NewProviderInput) => Promise<void>;
   logout: () => void;
 }
 
@@ -67,19 +73,22 @@ function loadInitial(): AuthState {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>(loadInitial);
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const persist = useCallback((next: AuthState) => {
+    queryClient.clear();
     setState(next);
     setSessionExpired(false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }, []);
+  }, [queryClient]);
 
   const clear = useCallback(() => {
+    queryClient.clear();
     setState(EMPTY);
     localStorage.removeItem(STORAGE_KEY);
-  }, []);
+  }, [queryClient]);
 
   const expire = useCallback(() => {
     clear();
@@ -105,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       const { user, token } = await apiLogin(email, password);
       persist({ user, token });
+      return user;
     },
     [persist],
   );
@@ -122,17 +132,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpired(false);
   }, [clear]);
 
+  const registerDriver = useCallback(async (email: string, password: string, provider: NewProviderInput) => {
+    const { user, token } = await apiRegisterDriver(email, password, provider);
+    persist({ user, token });
+  }, [persist]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
       isAuthenticated: Boolean(state.user),
       isAdmin: state.user?.role === "ADMIN",
+      isClient: state.user?.role === "CLIENTE",
+      isDriver: state.user?.role === "MOTORISTA",
       sessionExpired,
       login,
       register,
+      registerDriver,
       logout,
     }),
-    [state, sessionExpired, login, register, logout],
+    [state, sessionExpired, login, register, registerDriver, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

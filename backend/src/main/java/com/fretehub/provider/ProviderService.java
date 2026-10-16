@@ -1,7 +1,9 @@
 package com.fretehub.provider;
 
 import com.fretehub.domain.Enums.ProviderStatus;
+import com.fretehub.domain.Enums.ProviderType;
 import com.fretehub.domain.Enums.ServiceTag;
+import com.fretehub.user.UserAccount;
 import com.fretehub.security.CurrentUser;
 import com.fretehub.security.Ids;
 import com.fretehub.web.ApiException;
@@ -13,7 +15,6 @@ import com.fretehub.web.Dtos.ProviderStatusInput;
 import com.fretehub.web.Dtos.ProviderView;
 import com.fretehub.web.Dtos.ReviewInput;
 import com.fretehub.web.Dtos.ReviewView;
-import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,11 +37,12 @@ public class ProviderService {
 
   @Transactional(readOnly = true)
   public ProviderPage listPublic(
-      String search, String vehicleType, String region, String service, int page, int pageSize) {
+      String search, String vehicleType, String region, String service,
+      ProviderType type, Boolean available, String city, int page, int pageSize) {
     int safePage = Math.max(page, 1);
     int safeSize = pageSize <= 0 ? 9 : Math.min(pageSize, 50);
-    String term = normalize(search);
-    String regionTerm = normalize(region);
+    String term = CityNames.normalize(search);
+    String regionTerm = CityNames.normalize(region);
 
     List<ProviderView> filtered = providers.findByStatus(ProviderStatus.APROVADO).stream()
         .filter(provider -> vehicleType == null || vehicleType.isBlank()
@@ -48,8 +50,12 @@ public class ProviderService {
         .filter(provider -> service == null || service.isBlank()
             || provider.getServices().stream().anyMatch(tag -> tag.name().equals(service)))
         .filter(provider -> regionTerm.isBlank()
-            || provider.getRegions().stream().anyMatch(item -> normalize(item).contains(regionTerm)))
-        .filter(provider -> term.isBlank() || normalize(haystack(provider)).contains(term))
+            || provider.getRegions().stream().anyMatch(item -> CityNames.normalize(item).contains(regionTerm)))
+        .filter(provider -> type == null || provider.getType() == type)
+        .filter(provider -> available == null || provider.isAvailable() == available)
+        .filter(provider -> city == null || city.isBlank() || provider.getRegions().stream()
+            .anyMatch(item -> CityNames.matches(item, city)))
+        .filter(provider -> term.isBlank() || CityNames.normalize(haystack(provider)).contains(term))
         .sorted(Comparator.comparing(ProviderProfile::getName, String.CASE_INSENSITIVE_ORDER))
         .map(this::toPublicView)
         .toList();
@@ -59,14 +65,18 @@ public class ProviderService {
     return new ProviderPage(filtered.subList(from, to), filtered.size(), safePage, safeSize);
   }
 
-  // Perfil publico: so prestadores aprovados, sem a nota interna. A equipe
+  // Perfil publico: so motoristas aprovados, sem a nota interna. A equipe
   // (ADMIN logado) ve qualquer status e a nota, para revisar cadastros.
   @Transactional(readOnly = true)
   public ProviderView get(String id) {
     if (CurrentUser.isAdmin()) {
       return toAdminView(find(id));
     }
-    return toPublicView(findApproved(id));
+    ProviderProfile provider = findApproved(id);
+    boolean ownProfile = CurrentUser.find()
+        .map(user -> provider.getUser() != null && provider.getUser().getId().equals(user.id()))
+        .orElse(false);
+    return ownProfile ? toOwnView(provider) : toPublicView(provider);
   }
 
   @Transactional(readOnly = true)
@@ -74,7 +84,21 @@ public class ProviderService {
     return providers.findByStatus(ProviderStatus.APROVADO).stream()
         .flatMap(provider -> provider.getRegions().stream())
         .distinct()
-        .sorted(Comparator.comparing(ProviderService::normalize))
+        .sorted(Comparator.comparing(CityNames::normalize))
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<String> listCities() {
+    return providers.findByStatus(ProviderStatus.APROVADO).stream()
+        .filter(provider -> provider.getType() == ProviderType.INTERNO)
+        .flatMap(provider -> provider.getRegions().stream())
+        .map(CityNames::city)
+        .filter(city -> !city.isBlank())
+        .collect(java.util.stream.Collectors.toMap(
+            CityNames::normalize, city -> city, (first, second) -> first))
+        .values().stream()
+        .sorted(Comparator.comparing(CityNames::normalize))
         .toList();
   }
 
@@ -85,6 +109,18 @@ public class ProviderService {
 
   @Transactional
   public ProviderView create(ProviderInput input) {
+    return toPublicView(createProfile(input, null, ProviderType.EXTERNO));
+  }
+
+  @Transactional
+  public ProviderView createInternal(ProviderInput input, UserAccount user) {
+    return toAdminView(createProfile(input, user, ProviderType.INTERNO));
+  }
+
+  private ProviderProfile createProfile(ProviderInput input, UserAccount user, ProviderType type) {
+    if (input == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Informe os dados do motorista.");
+    }
     if (input.name() == null || input.name().isBlank()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Informe o nome.");
     }
@@ -112,6 +148,10 @@ public class ProviderService {
     if (!contactInfo.hasAny()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Informe ao menos um canal de contato.");
     }
+    if (type == ProviderType.INTERNO
+        && contactInfo.getPhone() == null && contactInfo.getWhatsapp() == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Informe um telefone ou WhatsApp.");
+    }
 
     ProviderProfile provider = new ProviderProfile();
     provider.setId(Ids.next("p"));
@@ -128,17 +168,47 @@ public class ProviderService {
     provider.setServices(new ArrayList<>(services));
     provider.setContacts(contactInfo);
     provider.setStatus(ProviderStatus.PENDENTE);
+    provider.setType(type);
+    provider.setUser(user);
+    provider.setAvailable(false);
+    provider.setDocumentsVerified(false);
     provider.setCreatedAt(Instant.now());
-    return toPublicView(providers.save(provider));
+    return providers.save(provider);
+  }
+
+  @Transactional(readOnly = true)
+  public ProviderView getMine() {
+    return toOwnView(findMine());
+  }
+
+  @Transactional
+  public ProviderView setAvailability(boolean available) {
+    ProviderProfile provider = findMine();
+    if (available && (provider.getStatus() != ProviderStatus.APROVADO
+        || !provider.isDocumentsVerified())) {
+      throw new ApiException(HttpStatus.CONFLICT, "O cadastro precisa estar aprovado para receber pedidos.");
+    }
+    provider.setAvailable(available);
+    return toOwnView(provider);
+  }
+
+  public ProviderProfile findMine() {
+    return providers.findByUser_Id(CurrentUser.get().id())
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Motorista nao encontrado."));
   }
 
   @Transactional
   public ProviderView updateStatus(String id, ProviderStatusInput input) {
-    if (input.status() == null) {
+    if (input == null || input.status() == null) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Informe o status.");
     }
     ProviderProfile provider = find(id);
     provider.setStatus(input.status());
+    if (input.status() == ProviderStatus.APROVADO) {
+      provider.setDocumentsVerified(true);
+    } else {
+      provider.setAvailable(false);
+    }
     if (input.documentNote() != null) {
       provider.setDocumentNote(input.documentNote().isBlank() ? null : input.documentNote().trim());
     }
@@ -147,6 +217,9 @@ public class ProviderService {
 
   @Transactional
   public ProviderView addReview(String providerId, ReviewInput input) {
+    if (input == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Informe uma avaliacao.");
+    }
     if (input.rating() < 1 || input.rating() > 5) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "A nota deve ser de 1 a 5.");
     }
@@ -158,7 +231,7 @@ public class ProviderService {
     boolean alreadyReviewed = provider.getReviews().stream()
         .anyMatch(existing -> authorId.equals(existing.getAuthorId()));
     if (alreadyReviewed) {
-      throw new ApiException(HttpStatus.CONFLICT, "Voce ja avaliou este prestador.");
+      throw new ApiException(HttpStatus.CONFLICT, "Voce ja avaliou este motorista.");
     }
     Review review = new Review(
         Ids.next("r"),
@@ -174,27 +247,33 @@ public class ProviderService {
 
   private ProviderProfile find(String id) {
     return providers.findById(id)
-        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Prestador nao encontrado."));
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Motorista nao encontrado."));
   }
 
-  // Fora do catalogo, o prestador "nao existe" para o publico: mesma resposta
+  // Fora do catalogo, o motorista "nao existe" para o publico: mesma resposta
   // 404 de um id inexistente, para nao revelar cadastros pendentes ou rejeitados.
   private ProviderProfile findApproved(String id) {
     return providers.findById(id)
         .filter(provider -> provider.getStatus() == ProviderStatus.APROVADO)
-        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Prestador nao encontrado."));
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Motorista nao encontrado."));
   }
 
   private ProviderView toPublicView(ProviderProfile provider) {
-    return toView(provider, false);
+    return toView(provider, false, false);
   }
 
   private ProviderView toAdminView(ProviderProfile provider) {
-    return toView(provider, true);
+    return toView(provider, true, true);
   }
 
-  private ProviderView toView(ProviderProfile provider, boolean includeInternal) {
+  private ProviderView toOwnView(ProviderProfile provider) {
+    return toView(provider, true, false);
+  }
+
+  private ProviderView toView(
+      ProviderProfile provider, boolean includeContacts, boolean includeInternal) {
     ContactInfo contacts = provider.getContacts();
+    boolean showContacts = provider.getType() == ProviderType.EXTERNO || includeContacts;
     return new ProviderView(
         provider.getId(),
         provider.getName(),
@@ -205,7 +284,10 @@ public class ProviderService {
         provider.getVehicleDescription(),
         List.copyOf(provider.getRegions()),
         List.copyOf(provider.getServices()),
-        new ContactView(contacts.getPhone(), contacts.getWhatsapp(), contacts.getEmail()),
+        showContacts ? new ContactView(contacts.getPhone(), contacts.getWhatsapp(), contacts.getEmail()) : null,
+        provider.getType(),
+        provider.isAvailable(),
+        provider.isDocumentsVerified(),
         provider.getStatus(),
         includeInternal ? provider.getDocumentNote() : null,
         provider.getCreatedAt(),
@@ -226,11 +308,4 @@ public class ProviderService {
         + String.join(" ", provider.getRegions());
   }
 
-  private static String normalize(String text) {
-    if (text == null) return "";
-    return Normalizer.normalize(text, Normalizer.Form.NFD)
-        .replaceAll("\\p{M}", "")
-        .toLowerCase()
-        .trim();
-  }
 }

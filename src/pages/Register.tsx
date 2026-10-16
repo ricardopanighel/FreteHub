@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { UserPlusIcon } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
 import { AuthShell } from "../components/AuthShell";
@@ -8,6 +8,8 @@ import { Alert, Button, ButtonSpinner, Field, Input } from "../components/ui";
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,7 +32,7 @@ export function Register() {
     setLoading(true);
     try {
       await register(name, email, password);
-      navigate("/", { replace: true });
+      navigate(from?.startsWith("/solicitar") || from?.startsWith("/meus-fretes") ? from : "/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar conta.");
     } finally {
@@ -41,7 +43,7 @@ export function Register() {
   return (
     <AuthShell
       title="Criar conta"
-      description="Crie sua conta de cliente para solicitar fretes e avaliar prestadores."
+      description="Crie sua conta de cliente para solicitar fretes e avaliar motoristas."
     >
       <form
         onSubmit={handleSubmit}
@@ -107,6 +109,7 @@ export function Register() {
         Ja tem conta?{" "}
         <Link
           to="/login"
+          state={from ? { from } : undefined}
           className="font-semibold text-primary-700 underline-offset-4 hover:text-primary-800 hover:underline"
         >
           Entrar

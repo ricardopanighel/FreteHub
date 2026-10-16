@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Home } from "./pages/Home";
@@ -11,6 +11,7 @@ import { AdminDashboard } from "./pages/AdminDashboard";
 import { MyFreights } from "./pages/MyFreights";
 import { RequestFreight } from "./pages/RequestFreight";
 import { NotFound } from "./pages/NotFound";
+import { DriverDashboard } from "./pages/DriverDashboard";
 
 export default function App() {
   return (
@@ -18,14 +19,16 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="catalogo" element={<Catalog />} />
-        <Route path="prestador/:id" element={<ProviderProfile />} />
-        <Route path="seja-prestador" element={<ProviderRegister />} />
+        <Route path="motorista/:id" element={<ProviderProfile />} />
+        <Route path="prestador/:id" element={<LegacyProviderRedirect />} />
+        <Route path="seja-motorista" element={<ProviderRegister />} />
+        <Route path="seja-prestador" element={<Navigate to="/seja-motorista" replace />} />
         <Route path="login" element={<Login />} />
         <Route path="cadastro" element={<Register />} />
         <Route
           path="solicitar"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={["CLIENTE"]}>
               <RequestFreight />
             </ProtectedRoute>
           }
@@ -33,15 +36,16 @@ export default function App() {
         <Route
           path="meus-fretes"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={["CLIENTE"]}>
               <MyFreights />
             </ProtectedRoute>
           }
         />
+        <Route path="painel-motorista" element={<ProtectedRoute roles={["MOTORISTA"]}><DriverDashboard /></ProtectedRoute>} />
         <Route
           path="admin"
           element={
-            <ProtectedRoute requireAdmin>
+            <ProtectedRoute roles={["ADMIN"]}>
               <AdminDashboard />
             </ProtectedRoute>
           }
@@ -50,4 +54,9 @@ export default function App() {
       </Route>
     </Routes>
   );
+}
+
+function LegacyProviderRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/motorista/${id}`} replace />;
 }

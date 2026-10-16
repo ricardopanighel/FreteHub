@@ -1,10 +1,12 @@
 package com.fretehub.user;
 
 import com.fretehub.domain.Enums.UserRole;
+import com.fretehub.provider.ProviderService;
 import com.fretehub.security.Ids;
 import com.fretehub.security.JwtService;
 import com.fretehub.web.ApiException;
 import com.fretehub.web.Dtos.AuthResponse;
+import com.fretehub.web.Dtos.DriverSignupInput;
 import com.fretehub.web.Dtos.LoginInput;
 import com.fretehub.web.Dtos.RegisterInput;
 import com.fretehub.web.Dtos.UserView;
@@ -19,15 +21,22 @@ public class AuthService {
   private final UserRepository users;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
+  private final ProviderService providers;
 
-  public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService) {
+  public AuthService(
+      UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
+      ProviderService providers) {
     this.users = users;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
+    this.providers = providers;
   }
 
   @Transactional(readOnly = true)
   public AuthResponse login(LoginInput input) {
+    if (input == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Informe e-mail e senha.");
+    }
     if (input.password() == null || input.password().isBlank()) {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "E-mail ou senha invalidos.");
     }
@@ -40,6 +49,9 @@ public class AuthService {
 
   @Transactional
   public AuthResponse register(RegisterInput input) {
+    if (input == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Informe os dados da conta.");
+    }
     String name = required(input.name(), "Informe o nome.");
     String email = normalizeEmail(input.email());
     if (input.password() == null || input.password().length() < 6) {
@@ -55,6 +67,25 @@ public class AuthService {
         passwordEncoder.encode(input.password()),
         UserRole.CLIENTE);
     users.save(user);
+    return response(user);
+  }
+
+  @Transactional
+  public AuthResponse registerDriver(DriverSignupInput input) {
+    if (input == null || input.provider() == null) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Informe os dados do motorista.");
+    }
+    String name = required(input.provider().name(), "Informe o nome.");
+    String email = normalizeEmail(input.email());
+    if (input.password() == null || input.password().length() < 6) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "A senha deve ter ao menos 6 caracteres.");
+    }
+    if (users.existsByEmailIgnoreCase(email)) {
+      throw new ApiException(HttpStatus.CONFLICT, "Ja existe uma conta com este e-mail.");
+    }
+    UserAccount user = users.save(new UserAccount(
+        Ids.next("u"), name, email, passwordEncoder.encode(input.password()), UserRole.MOTORISTA));
+    providers.createInternal(input.provider(), user);
     return response(user);
   }
 

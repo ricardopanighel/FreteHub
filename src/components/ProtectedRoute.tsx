@@ -1,15 +1,16 @@
 import { Navigate, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "../lib/auth";
+import type { UserRole } from "../lib/types";
 
 export function ProtectedRoute({
   children,
-  requireAdmin = false,
+  roles,
 }: {
   children: ReactNode;
-  requireAdmin?: boolean;
+  roles?: UserRole[];
 }) {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const location = useLocation();
 
   if (!isAuthenticated) {
@@ -21,7 +22,7 @@ export function ProtectedRoute({
       />
     );
   }
-  if (requireAdmin && !isAdmin) {
+  if (roles && (!user || !roles.includes(user.role))) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

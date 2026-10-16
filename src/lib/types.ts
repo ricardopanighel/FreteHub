@@ -38,7 +38,7 @@ export const SERVICE_LABELS: Record<ServiceTag, string> = {
   AJUDANTE_CARGA: "Ajudante de carga",
 };
 
-// Status do ciclo de curadoria de um prestador.
+// Status do ciclo de curadoria de um motorista.
 export type ProviderStatus = "PENDENTE" | "APROVADO" | "REJEITADO" | "INATIVO";
 
 export const STATUS_LABELS: Record<ProviderStatus, string> = {
@@ -49,9 +49,9 @@ export const STATUS_LABELS: Record<ProviderStatus, string> = {
 };
 
 export interface ContactChannels {
-  phone?: string;
-  whatsapp?: string;
-  email?: string;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
 }
 
 export interface Review {
@@ -72,14 +72,18 @@ export interface Provider {
   vehicleDescription: string;
   regions: string[]; // bairros / cidades de atuacao
   services: ServiceTag[];
-  contacts: ContactChannels;
+  contacts: ContactChannels | null;
+  type: ProviderType;
+  available: boolean;
+  documentsVerified: boolean;
   status: ProviderStatus;
-  documentNote?: string; // observacao interna da curadoria
+  documentNote?: string | null; // observacao interna da curadoria
   createdAt: string;
   reviews: Review[];
 }
 
-export type UserRole = "CLIENTE" | "ADMIN";
+export type ProviderType = "INTERNO" | "EXTERNO";
+export type UserRole = "CLIENTE" | "ADMIN" | "MOTORISTA";
 
 export interface User {
   id: string;
@@ -93,22 +97,31 @@ export interface CatalogFilters {
   vehicleType: VehicleType | "";
   region: string;
   service: ServiceTag | "";
+  type?: ProviderType | "";
+  available?: boolean;
+  city?: string;
 }
 
 // Ciclo de uma solicitacao de frete acompanhada pelo cliente e pela equipe.
 export type FreightStatus =
-  | "ABERTA"
-  | "EM_NEGOCIACAO"
-  | "CONFIRMADA"
-  | "CONCLUIDA"
-  | "CANCELADA";
+  | "PENDENTE"
+  | "CONTRAPROPOSTA"
+  | "ACEITO"
+  | "RECUSADO"
+  | "EXPIRADO"
+  | "EM_ANDAMENTO"
+  | "CONCLUIDO"
+  | "CANCELADO";
 
 export const FREIGHT_STATUS_LABELS: Record<FreightStatus, string> = {
-  ABERTA: "Aberta",
-  EM_NEGOCIACAO: "Em negociacao",
-  CONFIRMADA: "Confirmada",
-  CONCLUIDA: "Concluida",
-  CANCELADA: "Cancelada",
+  PENDENTE: "Pendente",
+  CONTRAPROPOSTA: "Contraproposta",
+  ACEITO: "Aceito",
+  RECUSADO: "Recusado",
+  EXPIRADO: "Expirado",
+  EM_ANDAMENTO: "Em andamento",
+  CONCLUIDO: "Concluido",
+  CANCELADO: "Cancelado",
 };
 
 export interface FreightRequest {
@@ -120,9 +133,17 @@ export interface FreightRequest {
   origin: string;
   destination: string;
   description: string;
-  scheduledDate: string; // YYYY-MM-DD
-  vehicleType: VehicleType | "";
-  service: ServiceTag | "";
+  city: string | null;
+  scheduledAt: string; // ISO UTC
+  contactPhone: string | null;
+  priceOffered: number | null;
+  counterPrice: number | null;
+  agreedPrice: number | null;
+  responseDeadline: string | null;
+  providerContacts: ContactChannels | null;
+  clientContact: ContactChannels | null;
+  vehicleType: VehicleType | null;
+  service: ServiceTag | null;
   status: FreightStatus;
   createdAt: string;
   updatedAt: string;

@@ -29,6 +29,8 @@ spring:
     default-property-inclusion: non_null
 
 fretehub:
+  freight:
+    response-minutes: ${FREIGHT_RESPONSE_MINUTES:30}
   jwt:
     # Sem valor versionado. Defina JWT_SECRET (32+ caracteres) via ambiente.
     # Em dev, se ausente, uma chave efemera e gerada a cada subida.

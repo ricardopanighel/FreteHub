@@ -1,6 +1,7 @@
 package com.fretehub.user;
 
 import com.fretehub.web.Dtos.AuthResponse;
+import com.fretehub.web.Dtos.DriverSignupInput;
 import com.fretehub.web.Dtos.LoginInput;
 import com.fretehub.web.Dtos.RegisterInput;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,5 +27,10 @@ public class AuthController {
   @PostMapping("/register")
   public AuthResponse register(@RequestBody RegisterInput input) {
     return authService.register(input);
+  }
+
+  @PostMapping("/register-driver")
+  public AuthResponse registerDriver(@RequestBody DriverSignupInput input) {
+    return authService.registerDriver(input);
   }
 }

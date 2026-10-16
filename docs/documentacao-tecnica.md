@@ -25,31 +25,34 @@ Sumario
 
 ## 1. O que e o FreteHub
 
-O FreteHub e um **catalogo com curadoria** de prestadores de frete urbano e
-pequenas mudancas, com demonstracao na Baixada Santista.
+O FreteHub combina um **catalogo com curadoria** e o aceite de pedidos de
+frete no app, com demonstracao na Baixada Santista.
 
 O problema que ele resolve: hoje quem precisa de um frete procura em grupos de
-WhatsApp e classificados, sem saber se o prestador e confiavel e sem nenhum
-registro do que foi pedido. O FreteHub faz duas coisas:
+WhatsApp e classificados, sem saber se o motorista e confiavel e sem nenhum
+registro do que foi pedido. O FreteHub faz tres coisas:
 
-- **Valida quem aparece.** So prestadores aprovados pela equipe entram no
+- **Valida quem aparece.** So motoristas aprovados pela equipe entram no
   catalogo publico.
-- **Guarda o pedido.** O cliente registra o frete (origem, destino, data,
-  descricao) e acompanha o status.
+- **Guarda o pedido.** O cliente informa origem, destino, data e horario,
+  carga, telefone e valor oferecido, e acompanha o status.
+- **Encaminha o pedido.** Motoristas do app aceitam, recusam ou contrapropoem
+  um valor. Motoristas de contato direto recebem o cliente fora do app.
 
-O que o FreteHub **nao** faz, de proposito: nao cobra, nao fatura e nao fecha
-preco. O cliente fala direto com o prestador (WhatsApp, telefone ou e-mail) e
-a negociacao acontece fora da plataforma.
+O FreteHub registra a oferta e o valor acordado, mas nao processa pagamento.
+Depois do aceite, cliente e motorista conversam diretamente para alinhar o
+servico. No modelo de contato direto, toda a conversa ocorre fora do app.
 
-Existem dois tipos de usuario com login:
+Existem tres papeis com login:
 
-| Papel     | Quem e                     | O que pode fazer                                              |
-| --------- | -------------------------- | ------------------------------------------------------------- |
-| `CLIENTE` | Quem precisa de um frete   | Avaliar prestadores, abrir pedidos, acompanhar e cancelar     |
-| `ADMIN`   | A equipe do FreteHub       | Tudo do cliente + curadoria de prestadores e status dos fretes |
+| Papel       | Quem e                      | O que pode fazer                                                |
+| ----------- | --------------------------- | --------------------------------------------------------------- |
+| `CLIENTE`   | Quem precisa de um frete    | Abrir pedidos, responder a contrapropostas, acompanhar, avaliar |
+| `MOTORISTA` | Motorista que recebe no app | Definir disponibilidade, responder a pedidos e executar fretes  |
+| `ADMIN`     | A equipe do FreteHub        | Curadoria, moderacao e apoio a pedidos antigos                  |
 
-O **prestador nao tem login**. Ele e um cadastro (um "perfil") que a equipe
-aprova ou nao.
+O perfil `INTERNO` pertence a uma conta `MOTORISTA`. O perfil `EXTERNO` e um
+cadastro sem login. Os dois passam pela mesma curadoria.
 
 ---
 
@@ -69,7 +72,7 @@ A aplicacao tem tres pecas:
   roda no navegador. Nao guarda dados de negocio; pede tudo para a API.
 - **API (backend)** — o "cerebro". Recebe as requisicoes, aplica as regras
   (quem pode o que, quais status sao validos) e le/grava no banco.
-- **Banco** — PostgreSQL, onde ficam usuarios, prestadores, avaliacoes e
+- **Banco** — PostgreSQL, onde ficam usuarios, motoristas, avaliacoes e
   pedidos de frete.
 
 Frontend e API se comunicam por **HTTP com JSON**. Toda rota da API comeca com
@@ -124,8 +127,8 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-Na subida, o Flyway cria as tabelas e, se o banco estiver vazio, o seed carrega
-as contas e prestadores de demonstracao.
+Na subida, o Flyway cria ou atualiza as tabelas e, se a tabela de usuarios
+estiver vazia, o seed carrega as contas, motoristas e fretes de demonstracao.
 
 **Frontend** (terminal 2, na raiz do projeto):
 
@@ -143,10 +146,13 @@ VITE_PROXY_TARGET=http://localhost:8081 npm run dev     # na raiz
 
 **Contas de demonstracao:**
 
-| Perfil  | E-mail               | Senha      |
-| ------- | -------------------- | ---------- |
-| Admin   | admin@fretehub.com   | admin123   |
-| Cliente | cliente@fretehub.com | cliente123 |
+| Perfil                           | E-mail                 | Senha        |
+| -------------------------------- | ---------------------- | ------------ |
+| Admin                            | admin@fretehub.com     | admin123     |
+| Cliente                          | cliente@fretehub.com   | cliente123   |
+| Motorista aprovado, disponivel   | motorista@fretehub.com | motorista123 |
+| Motorista aprovado, indisponivel | ana@fretehub.com       | motorista123 |
+| Motorista pendente               | pedro@fretehub.com     | motorista123 |
 
 **Outros comandos:**
 
@@ -175,7 +181,7 @@ A versao online usa tres pecas gratuitas: dois servicos no Render, descritos em
 ```
 
 - **`fretehub-web`** — o Render roda `npm run build` e publica o `dist/`.
-  Rotas do React Router (`/catalogo`, `/prestador/...`) nao sao arquivos: uma
+  Rotas do React Router (`/catalogo`, `/motorista/...`) nao sao arquivos: uma
   regra de rewrite as manda para o `index.html`, e o front resolve a tela.
 - **`fretehub-api`** — o Render gera a imagem do
   [`backend/Dockerfile`](../backend/Dockerfile) e roda o jar.
@@ -204,7 +210,9 @@ O [`backend/docker-start.sh`](../backend/docker-start.sh) converte a
 `DATABASE_URL` nas variaveis `DB_URL`, `DB_USER` e `DB_PASSWORD` que o perfil
 `prod` exige. Se o endereco copiado for o do pooler (`-pooler`), ele troca pela
 conexao direta, porque o Flyway nao funciona bem atras do PgBouncer e a API ja
-tem o Hikari como pool. Cada push na `main` gera um novo deploy.
+tem o Hikari como pool. Cada push na `main` gera um novo deploy. Mantenha o
+Blueprint que gerencia `fretehub-api` e `fretehub-web`; o Blueprint duplicado
+com servicos terminados em `-y6sg` precisa ser desconectado antes de publicar.
 
 **Limites do plano gratuito:**
 
@@ -236,6 +244,7 @@ valores padrao apenas para o desenvolvimento local. O arquivo
 | `CORS_ALLOWED_ORIGINS`   | `http://localhost:5173,http://127.0.0.1:5173` | URL do site publicado        |
 | `JWT_SECRET`             | vazio → chave efemera gerada na subida        | **obrigatoria**, 32+ caracteres |
 | `JWT_EXPIRATION_HOURS`   | `12`                                          | opcional                     |
+| `FREIGHT_RESPONSE_MINUTES` | `30`                                       | opcional                     |
 | `VITE_PROXY_TARGET`      | `http://localhost:8080` (usada pelo Vite)     | —                            |
 | `VITE_API_URL`           | vazio (usa `/api` relativo)                   | URL da API, no build do site |
 
@@ -267,9 +276,9 @@ com/fretehub/
 ├── config/SecurityConfig.java # regras de acesso, CORS, BCrypt
 ├── config/CorsProperties.java # enderecos do front liberados no CORS
 ├── security/                  # JWT e usuario logado
-├── user/                      # contas, login e cadastro de cliente
-├── provider/                  # prestadores, curadoria e avaliacoes
-├── freight/                   # pedidos de frete e seus status
+├── user/                      # contas e login de cliente/motorista
+├── provider/                  # motoristas, curadoria e avaliacoes
+├── freight/                   # pedidos de frete e fluxo de aceite
 ├── domain/Enums.java          # listas fixas de valores (status, veiculos...)
 ├── web/                       # DTOs e tratamento de erros
 └── seed/DemoDataLoader.java   # dados de demonstracao
@@ -277,7 +286,7 @@ com/fretehub/
 
 ### 5.1 As camadas de cada assunto
 
-Cada assunto segue o mesmo padrao de tres camadas. Usando prestadores como
+Cada assunto segue o mesmo padrao de tres camadas. Usando motoristas como
 exemplo:
 
 ```
@@ -329,11 +338,12 @@ com o banco fica aberta **apenas durante o metodo do service**, nao durante a
 requisicao inteira.
 
 Isso importa porque algumas relacoes sao `LAZY` (carregadas so quando
-acessadas), como o cliente e o prestador de um frete. Por isso, todos os
+acessadas), como o cliente e o motorista de um frete. Por isso, todos os
 metodos de service que montam um `...View` tem `@Transactional` — a conversao
 para DTO acontece **dentro** da transacao. Se voce criar um metodo novo que le
 uma relacao e esquecer o `@Transactional`, vai ver um
-`LazyInitializationException`.
+`LazyInitializationException`. Os metodos que leem pedidos podem expirar
+prazos vencidos; portanto, essas leituras usam transacao com escrita.
 
 Outra consequencia util: dentro de um metodo `@Transactional`, alterar um
 campo de uma entidade carregada (ex.: `freight.setStatus(...)`) ja grava no
@@ -351,8 +361,9 @@ atualizar os dados existentes.
 | `VehicleType`    | MOTO, CARRO, FIORINO, VAN, CAMINHAO_PEQUENO, CAMINHAO_BAU                                       |
 | `ServiceTag`     | FRETE_PEQUENO, MUDANCA_RESIDENCIAL, MUDANCA_COMERCIAL, ENTREGA_EXPRESSA, CARGA_FRAGIL, MONTAGEM_MOVEIS, AJUDANTE_CARGA |
 | `ProviderStatus` | PENDENTE, APROVADO, REJEITADO, INATIVO                                                          |
-| `FreightStatus`  | ABERTA, EM_NEGOCIACAO, CONFIRMADA, CONCLUIDA, CANCELADA                                         |
-| `UserRole`       | CLIENTE, ADMIN                                                                                  |
+| `ProviderType`   | INTERNO, EXTERNO                                                                                 |
+| `FreightStatus`  | PENDENTE, CONTRAPROPOSTA, ACEITO, RECUSADO, EXPIRADO, EM_ANDAMENTO, CONCLUIDO, CANCELADO        |
+| `UserRole`       | CLIENTE, MOTORISTA, ADMIN                                                                       |
 
 Os mesmos valores existem em `src/lib/types.ts`, junto com os rotulos de tela
 (`VEHICLE_LABELS`, `SERVICE_LABELS`...). **Ao adicionar um valor, atualize os
@@ -371,8 +382,12 @@ dois lados.**
   inexistente e senha errada dao a **mesma** mensagem, para nao revelar quais
   e-mails tem conta.
 - Contas `ADMIN` nao sao criadas pela API; vem do seed (ou direto no banco).
+- **`AuthService.registerDriver`** — cria, na mesma transacao, uma conta
+  `MOTORISTA` e um perfil `INTERNO` `PENDENTE`. Exige WhatsApp ou telefone,
+  alem dos dados normais do perfil. O e-mail e unico entre todos os papeis;
+  repeticao devolve `409`. O cadastro retorna `{ user, token }`.
 
-### 5.6 Modulo `provider` — prestadores, curadoria e avaliacoes
+### 5.6 Modulo `provider` — motoristas, curadoria e avaliacoes
 
 **Entidade `ProviderProfile`** (tabela `providers`):
 
@@ -387,29 +402,36 @@ dois lados.**
 | `status`                        | Situacao na curadoria                                        |
 | `documentNote`                  | Observacao interna da equipe (ex.: "CNH validada")           |
 | `reviews`                       | Avaliacoes (tabela `reviews`)                                |
+| `type`                          | `INTERNO` (com login) ou `EXTERNO` (contato direto)           |
+| `user`                          | Conta `MOTORISTA` do perfil interno; nulo no externo         |
+| `available`                     | Disponibilidade para receber novos pedidos no app            |
+| `documentsVerified`             | Conferencia de CNH e CRLV pela equipe                        |
 
 `regions` e `services` sao `@ElementCollection`: listas simples guardadas em
 tabelas auxiliares, com uma coluna `position` para manter a ordem. `contacts`
 e um `@Embeddable` (`ContactInfo`): os tres campos viram colunas da propria
 tabela `providers`; valores em branco viram `null`.
 
-**Cadastro (`create`)** — aberto ao publico pela pagina "Seja um prestador".
+**Cadastro (`create`)** — aberto ao publico pela pagina "Seja um motorista".
 Exige nome, chamada, tipo de veiculo, ao menos uma regiao, ao menos um
 servico e ao menos um canal de contato. **Sempre entra como `PENDENTE`**,
-seja qual for o valor enviado.
+seja qual for o valor enviado. Sem a opcao "Receber pedidos pelo app", cria um
+perfil `EXTERNO` sem login. Com a opcao marcada, usa `register-driver` e cria
+um perfil `INTERNO` vinculado a uma conta, tambem `PENDENTE`.
 
 **Curadoria (`updateStatus`)** — so `ADMIN`. Muda o status e, opcionalmente,
-a observacao interna (`documentNote`; texto vazio apaga a nota). Os quatro
-status:
+a observacao interna (`documentNote`; texto vazio apaga a nota). Aprovar marca
+`documentsVerified=true`, pois a equipe confere CNH e CRLV. Sair de
+`APROVADO` desliga `available`. Os quatro status:
 
 | Status      | Significado                       | Aparece no catalogo? | Recebe pedido? |
 | ----------- | --------------------------------- | -------------------- | -------------- |
 | `PENDENTE`  | Aguardando analise                | Nao                  | Nao            |
-| `APROVADO`  | Validado pela equipe              | **Sim**              | **Sim**        |
+| `APROVADO`  | Validado pela equipe              | **Sim**              | So se `INTERNO` e disponivel |
 | `REJEITADO` | Nao passou na curadoria           | Nao                  | Nao            |
 | `INATIVO`   | Ja foi aprovado, foi desativado   | Nao                  | Nao            |
 
-**Catalogo publico (`listPublic`)** — le os prestadores `APROVADO` e aplica os
+**Catalogo publico (`listPublic`)** — le os motoristas `APROVADO` e aplica os
 filtros **em memoria**, em Java:
 
 - `vehicleType` e `service`: comparacao exata com o enum.
@@ -417,6 +439,7 @@ filtros **em memoria**, em Java:
   encontra `Sao Vicente`).
 - `search`: "contem" sobre nome + chamada + bio + regioes, tambem ignorando
   acentos e maiusculas.
+- `type`, `available` e `city`: forma de contratacao, disponibilidade e cidade.
 
 Depois ordena por nome e corta a pagina pedida. `page` comeca em 1;
 `pageSize` padrao e 9 e maximo 50. A resposta traz `items`, `total`, `page` e
@@ -424,10 +447,17 @@ Depois ordena por nome e corta a pagina pedida. `page` comeca em 1;
 secao 12.
 
 **Perfil (`get`)** — para o publico (e para clientes logados), so existe
-prestador `APROVADO`: qualquer outro status responde `404`, igual a um id
+motorista `APROVADO`: qualquer outro status responde `404`, igual a um id
 inexistente, para nao revelar cadastros pendentes ou rejeitados. Se quem pede
 e um `ADMIN` logado, a API devolve o perfil em qualquer status — e assim que o
 painel deixa a equipe pre-visualizar um cadastro pendente.
+
+**Contatos.** O catalogo e o perfil publico mostram os canais de contato do
+`EXTERNO`. Para `INTERNO`, os campos de contato ficam vazios no catalogo e no
+perfil publico, inclusive para clientes logados. O proprio motorista e o admin
+veem seus dados. Depois do aceite de um pedido, o cliente recebe telefone e
+WhatsApp do motorista, e o motorista recebe telefone e e-mail do cliente no
+`FreightView`. O id e o e-mail da conta vinculada nao saem no perfil publico.
 
 **Nota interna (`documentNote`)** — so sai nas respostas para a equipe:
 `/api/admin/providers`, o `PATCH` de curadoria e o perfil pedido por um
@@ -435,14 +465,22 @@ painel deixa a equipe pre-visualizar um cadastro pendente.
 codigo, isso e a diferenca entre `toPublicView` e `toAdminView` no
 `ProviderService`.
 
-**Regioes (`listRegions`)** — lista sem repeticao das regioes dos prestadores
+**Regioes (`listRegions`)** — lista sem repeticao das regioes dos motoristas
 aprovados, usada para montar o filtro de regiao no front.
 
-**Avaliacoes (`addReview`)** — qualquer usuario logado, apenas em prestador
-`APROVADO` (senao `404`). Nota de 1 a 5 e comentario obrigatorio. **Um
-usuario so avalia cada prestador uma vez**:
+**Cidades (`listCities`)** — lista cidades com motorista interno aprovado;
+o formulario de frete usa esta lista para selecionar cidade e destinatario.
 
-- o service verifica antes e devolve `409 "Voce ja avaliou este prestador."`;
+**Disponibilidade.** O motorista aprovado pode ligar ou desligar o recebimento
+de novos pedidos. Perfil pendente, rejeitado ou inativo nao pode ligar. Um
+pedido dirigido a ele antes de ficar indisponivel ainda pode ser respondido,
+desde que continue aprovado.
+
+**Avaliacoes (`addReview`)** — apenas `CLIENTE`, em motorista
+`APROVADO` (senao `404`). Nota de 1 a 5 e comentario obrigatorio. **Um
+cliente so avalia cada motorista uma vez**:
+
+- o service verifica antes e devolve `409 "Voce ja avaliou este motorista."`;
 - o banco reforca com a restricao unica `(provider_id, author_id)`.
 
 O nome do autor e copiado no momento da avaliacao (`author_name`). As
@@ -451,45 +489,52 @@ logado — no PostgreSQL varios `NULL` nao conflitam entre si.
 
 ### 5.7 Modulo `freight` — pedidos de frete
 
-**Entidade `FreightOrder`** (tabela `freight_requests`): cliente, prestador
-(opcional), origem, destino, descricao, data desejada, tipo de veiculo e
-servico (opcionais), status e datas de criacao/atualizacao.
+**Entidade `FreightOrder`** (tabela `freight_requests`): cliente, motorista
+opcional, cidade, origem, destino, descricao da carga, data e horario,
+telefone do cliente, valores, prazo, status e datas de criacao/atualizacao.
+`providerName` guarda uma copia do nome do motorista para o historico.
+`@Version` protege a disputa por um pedido da fila: o primeiro aceite grava,
+e uma tentativa concorrente recebe `409`.
 
-O campo `providerName` e uma **copia** do nome do prestador no momento do
-pedido. Assim, o historico continua legivel mesmo que o prestador mude de nome
-ou seja desativado.
+**Abrir pedido (`create`)** — apenas `CLIENTE`. Exige cidade, origem, destino,
+descricao de 10 ou mais caracteres, telefone, data e horario futuros e oferta
+de valor. Dinheiro usa `BigDecimal` com duas casas, maior que zero e ate
+100.000. A data e hora sao interpretadas em `America/Sao_Paulo` e gravadas em
+UTC em `scheduled_at`. Tipo de veiculo e servico continuam opcionais.
 
-**Abrir pedido (`create`)** — usuario logado. Valida:
+O cliente escolhe um motorista `INTERNO`, `APROVADO` e disponivel na cidade
+ou envia para a fila (`provider_id` nulo). A cidade corresponde ao trecho
+anterior a ` - ` em regioes como `Santos - Gonzaga`, sem diferenciar acentos
+nem maiusculas. Um motorista externo nunca e alvo de pedido no app. O pedido
+nasce `PENDENTE`, com `response_deadline` calculado a partir de
+`FREIGHT_RESPONSE_MINUTES` (30 por padrao).
 
-- origem, destino e descricao obrigatorios; descricao com 10+ caracteres;
-- data obrigatoria e **nao pode estar no passado** (o "hoje" e calculado no
-  fuso `America/Sao_Paulo`, nao no do servidor);
-- se veio um prestador, ele precisa estar `APROVADO`;
-- `vehicleType` e `service`, se enviados, precisam ser valores validos.
+**Respostas.** O motorista alvo pode aceitar, recusar ou fazer uma
+contraproposta positiva e diferente da oferta. Na fila, o motorista pode
+apenas aceitar pelo valor oferecido; recusa e contraproposta nao se aplicam.
+O cliente aceita ou recusa a contraproposta. Existe uma rodada apenas. O
+aceite grava `agreed_price`; a contraproposta abre um novo prazo para o
+cliente. O motorista pode responder a um pedido ja recebido mesmo se depois
+ficar indisponivel, desde que continue `APROVADO`. Essa aprovacao tambem e
+conferida quando o cliente aceita a contraproposta.
 
-O pedido nasce `ABERTA`.
+| Acao | Quem | De | Para |
+| ---- | ---- | -- | ---- |
+| Criar | Cliente | — | `PENDENTE` |
+| Aceitar | Motorista alvo ou da fila | `PENDENTE` | `ACEITO` |
+| Recusar / contrapropor | Motorista alvo | `PENDENTE` | `RECUSADO` / `CONTRAPROPOSTA` |
+| Aceitar / recusar contraproposta | Cliente dono | `CONTRAPROPOSTA` | `ACEITO` / `RECUSADO` |
+| Prazo esgotado | Sistema, ao acessar | `PENDENTE` ou `CONTRAPROPOSTA` | `EXPIRADO` |
+| Iniciar / concluir | Motorista do pedido | `ACEITO` / `EM_ANDAMENTO` | `EM_ANDAMENTO` / `CONCLUIDO` |
+| Cancelar | Cliente dono | `PENDENTE`, `CONTRAPROPOSTA` ou `ACEITO` | `CANCELADO` |
+| Moderar | Admin | Qualquer status nao final | `CANCELADO` |
+| Apoiar pedido antigo externo | Admin | `ACEITO` / `EM_ANDAMENTO` | `EM_ANDAMENTO` / `CONCLUIDO` |
 
-**Maquina de status** — o status so anda por caminhos permitidos, definidos
-no mapa `TRANSITIONS` do `FreightService`:
-
-```
-ABERTA ──▶ EM_NEGOCIACAO ──▶ CONFIRMADA ──▶ CONCLUIDA
-  │              │                │
-  └──────────────┴────────────────┴──────▶ CANCELADA
-```
-
-`CONCLUIDA` e `CANCELADA` sao finais: nao saem dali.
-
-Quem move o status:
-
-| Acao                          | Quem          | Rota                              | Regra                                           |
-| ----------------------------- | ------------- | --------------------------------- | ----------------------------------------------- |
-| Avancar / cancelar            | `ADMIN`       | `PATCH /api/admin/freights/{id}`  | So transicoes do diagrama; um passo por vez     |
-| Cancelar o proprio pedido     | Dono do pedido | `POST /api/freights/{id}/cancel` | So enquanto `ABERTA` ou `EM_NEGOCIACAO`         |
-
-Ou seja, depois de `CONFIRMADA` o cliente nao cancela mais sozinho; so a
-equipe. Tentar pular etapa (ex.: `ABERTA → CONFIRMADA`) da `400`. Cancelar
-pedido de outra pessoa da `403`.
+`RECUSADO`, `EXPIRADO`, `CONCLUIDO` e `CANCELADO` sao finais. Para tentar
+outro motorista ou enviar a fila depois de recusa ou expiracao, o cliente
+cria outro pedido pre-preenchido. O pedido anterior fica no historico. A API
+expira pedidos vencidos quando sao carregados e atualiza `updated_at`; a fila
+lista apenas pedidos dentro do prazo. Nao ha job agendado.
 
 ### 5.8 Erros
 
@@ -505,19 +550,21 @@ exibe. Codigos usados:
 
 | Codigo | Quando                                                        |
 | ------ | ------------------------------------------------------------- |
-| `400`  | Dado invalido ou transicao de status nao permitida            |
+| `400`  | Dado invalido, JSON malformado, enum ou parametro invalido    |
 | `401`  | Sem login, token invalido/expirado, ou login com senha errada |
 | `403`  | Logado, mas sem permissao (ex.: cliente em rota de admin)     |
-| `404`  | Prestador ou pedido nao encontrado                            |
-| `409`  | Conflito: e-mail ja cadastrado ou avaliacao repetida          |
+| `404`  | Motorista ou pedido nao encontrado                            |
+| `409`  | E-mail repetido, prazo vencido, resposta concorrente ou transicao em conflito |
 
 Os erros `401` e `403` de acesso sao gerados pelo Spring Security (ver secao
-7), com o mesmo formato `{ "message": ... }`.
+7), com o mesmo formato `{ "message": ... }`. `/error` e publico para que
+falhas de parsing nao virem um `401` enganoso. Conflitos de versao otimista e
+integridade do banco sao mapeados para `409`.
 
 ### 5.9 Identificadores
 
 Os ids sao textos com prefixo por tipo, gerados por `Ids.next(prefixo)`:
-`u-` (usuario), `p-` (prestador), `r-` (avaliacao), `f-` (frete), seguidos de
+`u-` (usuario), `p-` (motorista), `r-` (avaliacao), `f-` (frete), seguidos de
 8 caracteres de um UUID. Ex.: `f-3fa85f64`. O prefixo ajuda a reconhecer o
 que e cada id ao ler logs e o banco.
 
@@ -527,12 +574,19 @@ O `DemoDataLoader` roda na subida da API. **So age se a tabela de usuarios
 estiver vazia** — entao nunca sobrescreve dados reais. Ele le
 `src/main/resources/seed/demo.json` e grava:
 
-- 2 usuarios (admin e cliente);
-- 6 prestadores (4 `APROVADO`, 2 `PENDENTE`) com algumas avaliacoes;
-- 2 fretes do cliente demo.
+- 5 usuarios: admin, cliente e tres motoristas;
+- 6 motoristas (4 `APROVADO`, 2 `PENDENTE`) com algumas avaliacoes;
+- 3 fretes do cliente demo: `ACEITO`, `CONCLUIDO` e `EXPIRADO`.
 
-As senhas do JSON passam pelo BCrypt antes de gravar. Para recarregar o seed,
-esvazie o banco (secao 6.3).
+Carlos (`p-001`) e interno, aprovado e disponivel. Ana (`p-002`) e interna,
+aprovada e indisponivel; atende a mesma cidade de Carlos para demonstrar a
+fila depois de ligar a disponibilidade. Pedro (`p-005`) e interno e pendente.
+Os demais sao externos. As datas dos pedidos de exemplo sao relativas ao dia
+em que o seed carrega, para permanecerem validas.
+
+As senhas do JSON passam pelo BCrypt antes de gravar. O seed so age se a
+tabela `app_user` estiver vazia. Para recarrega-lo, use o reset do banco
+**local** (secao 6.3); a V2 nao insere as contas novas em um banco populado.
 
 ---
 
@@ -540,33 +594,80 @@ esvazie o banco (secao 6.3).
 
 ### 6.1 Tabelas
 
-```
-app_user ◀──────────── freight_requests ───────────▶ providers
- (id, email unico,       (client_id obrigatorio,       (dados do prestador,
-  role, password_hash)    provider_id opcional,         contatos, status)
-                          status, datas)                     ▲  ▲  ▲
-                                                             │  │  │
-                                   provider_region ──────────┘  │  │
-                                   (lista de regioes)           │  │
-                                   provider_service ────────────┘  │
-                                   (lista de servicos)             │
-                                   reviews ────────────────────────┘
-                                   (nota, comentario, author_id;
-                                    unico por provider_id + author_id)
+O diagrama usa os nomes fisicos do projeto: `providers` corresponde a
+**Driver**, e `freight_requests` corresponde a **FreightRequest** no escopo.
+`provider_id` e o `driver_id` do escopo; `description` e `cargo_details`.
+
+```mermaid
+erDiagram
+    app_user ||--o{ freight_requests : "cliente"
+    app_user o|--o| providers : "login do motorista interno"
+    app_user o|--o{ reviews : "autor"
+    providers o|--o{ freight_requests : "motorista escolhido"
+    providers ||--o{ provider_region : "atende"
+    providers ||--o{ provider_service : "oferece"
+    providers ||--o{ reviews : "recebe"
+
+    app_user {
+        string id PK
+        string email UK
+        string password_hash
+        string role
+    }
+    providers {
+        string id PK
+        string user_id FK
+        string type
+        string status
+        boolean is_available
+        boolean documents_verified
+        string phone
+        string whatsapp
+    }
+    provider_region {
+        string provider_id FK
+        int position
+        string region
+    }
+    provider_service {
+        string provider_id FK
+        int position
+        string service
+    }
+    freight_requests {
+        string id PK
+        string client_id FK
+        string provider_id FK
+        string city
+        timestamp scheduled_at
+        string contact_phone
+        decimal price_offered
+        decimal counter_price
+        decimal agreed_price
+        timestamp response_deadline
+        string status
+        long version
+    }
+    reviews {
+        string id PK
+        string provider_id FK
+        string author_id FK
+        int rating
+    }
 ```
 
-| Tabela             | Guarda                                   | Observacao                                   |
-| ------------------ | ---------------------------------------- | -------------------------------------------- |
-| `app_user`         | Contas de cliente e admin                | `email` unico                                |
-| `providers`        | Perfis de prestador                      | Contatos sao colunas desta tabela            |
-| `provider_region`  | Regioes de cada prestador                | Chave `(provider_id, position)`              |
-| `provider_service` | Servicos de cada prestador               | Chave `(provider_id, position)`              |
-| `reviews`          | Avaliacoes                               | Unico por `(provider_id, author_id)`         |
-| `freight_requests` | Pedidos de frete                         | `provider_id` pode ser nulo                  |
-| `flyway_schema_history` | Controle do Flyway                  | Nao mexer manualmente                        |
+| Tabela | Guarda | Regra principal |
+| ------ | ------ | --------------- |
+| `app_user` | Contas de cliente, motorista e admin | `email` unico; papel `MOTORISTA` no perfil interno |
+| `providers` | Perfis de motorista e contatos | `user_id` unico e preenchido somente para `INTERNO` |
+| `provider_region` | Regioes atendidas | Chave `(provider_id, position)` |
+| `provider_service` | Servicos oferecidos | Chave `(provider_id, position)` |
+| `reviews` | Avaliacoes | Unico por `(provider_id, author_id)` |
+| `freight_requests` | Pedidos, ofertas e prazos | `provider_id` nulo significa fila da cidade |
+| `flyway_schema_history` | Controle das migrations | Nao alterar manualmente |
 
-Datas/hora (`created_at`, `updated_at`) sao gravadas em **UTC**. A data do
-frete (`scheduled_date`) e so dia, sem hora.
+Datas e horarios (`created_at`, `updated_at`, `scheduled_at`) sao gravados em
+UTC. A API interpreta o horario informado pelo cliente em `America/Sao_Paulo`.
 
 ### 6.2 Migrations com Flyway
 
@@ -574,7 +675,19 @@ O schema e **versionado**: cada mudanca de estrutura e um arquivo SQL em
 `backend/src/main/resources/db/migration/`, com nome no formato
 `V<numero>__<descricao>.sql`. Hoje existe:
 
-- `V1__initial_schema.sql` — cria todas as tabelas acima.
+- `V1__initial_schema.sql` — cria as tabelas originais.
+- `V2__motoristas_e_fluxo_de_aceite.sql` — adiciona tipo, conta,
+  disponibilidade e documentos aos motoristas; cidade, horario, contatos,
+  precos, prazo e versao aos pedidos.
+
+A V2 converte os status antigos: `ABERTA` e `EM_NEGOCIACAO` viram
+`EXPIRADO`; `CONFIRMADA` vira `ACEITO`; `CONCLUIDA` vira `CONCLUIDO`;
+`CANCELADA` vira `CANCELADO`. Os perfis existentes ficam `EXTERNO` e
+aprovados recebem `documents_verified=true`. As datas antigas recebem
+`scheduled_at` com 09:00 no fuso de Brasilia. Campos novos de pedidos
+antigos podem ficar nulos; nesse caso, o valor aparece como "A combinar".
+`scheduled_at` e `version` sao obrigatorios. A V2 cria indices em
+`(client_id)`, `(provider_id, status)` e `(status, response_deadline)`.
 
 Na subida, o Flyway compara os arquivos com a tabela `flyway_schema_history`
 e aplica, em ordem, os que ainda nao rodaram. Em seguida, o Hibernate roda em
@@ -596,13 +709,41 @@ tinha tabelas; num banco vazio ela nao tem efeito.
 
 ### 6.3 Recomecar do zero em dev
 
+**Validacao local sem apagar dados existentes.** Crie um schema separado no
+PostgreSQL local e aponte a API para ele com o parametro JDBC
+`currentSchema`. O Flyway e o seed usam esse schema, sem alterar as tabelas
+existentes em `public`:
+
+```bash
+psql -h localhost -U fretehub -d fretehub -c "CREATE SCHEMA fretehub_verificacao AUTHORIZATION fretehub;"
+cd backend
+DB_URL='jdbc:postgresql://localhost:5432/fretehub?currentSchema=fretehub_verificacao' SERVER_PORT=8081 ./mvnw spring-boot:run
+```
+
+Para testar a V2 **sobre linhas V1**, primeiro suba o codigo V1 apontando
+para esse mesmo schema e carregue o seed antigo. Depois pare essa instancia
+e suba o codigo novo com a mesma `DB_URL`: o Flyway aplica a V2 sobre as
+linhas existentes e o Hibernate valida o mapeamento. Para conferir o seed
+novo a partir do zero, use outro schema vazio com outro nome. Ao consultar
+com `psql`, use nomes qualificados, como
+`SELECT status, scheduled_at, version FROM fretehub_verificacao.freight_requests;`.
+
+**Reset do banco local.** Se a intencao for realmente apagar os dados de
+desenvolvimento em `public`, rode:
+
 ```bash
 psql -h localhost -U fretehub -d fretehub -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 cd backend && ./mvnw spring-boot:run
 ```
 
-Isso apaga **todos** os dados do banco `fretehub`. O Flyway recria o schema e
-o seed repovoa as contas de demonstracao. Use apenas no banco local.
+Isso apaga **todos** os dados do banco PostgreSQL **local** `fretehub`. O Flyway
+recria o schema e o seed repovoa as contas de demonstracao. A V2 sobre um
+banco ja populado preserva os dados, mas nao carrega novas contas de seed.
+Zerar o Neon apaga os dados online e requer confirmacao explicita. Somente
+depois dessa confirmacao, execute no SQL Editor do Neon
+`DROP SCHEMA public CASCADE; CREATE SCHEMA public;` e reinicie a API para
+carregar o seed novo. Nao execute o reset de desenvolvimento na conexao de
+producao.
 
 ---
 
@@ -651,17 +792,22 @@ do Spring Security.
 Definidas em [`SecurityConfig`](../backend/src/main/java/com/fretehub/config/SecurityConfig.java),
 avaliadas de cima para baixo:
 
-| Rotas                                                        | Acesso         |
-| ------------------------------------------------------------ | -------------- |
-| `POST /api/auth/login`, `POST /api/auth/register`            | Publico        |
-| `GET /api/providers`, `GET /api/providers/*`, `GET /api/regions` | Publico    |
-| `POST /api/providers` (cadastro de prestador)                | Publico        |
-| `/api/admin/**`                                              | Papel `ADMIN`  |
-| Qualquer outra rota `/api/**`                                | Logado         |
-| Fora de `/api`                                               | Negado         |
+| Rotas | Acesso |
+| ----- | ------ |
+| `/error` | Publico; permite resposta correta para JSON invalido |
+| `POST /api/auth/login`, `/register`, `/register-driver` | Publico |
+| `GET /api/providers`, `GET /api/providers/*`, `GET /api/regions`, `GET /api/cities` | Publico |
+| `POST /api/providers` | Publico; cadastro externo |
+| `POST /api/providers/*/reviews` | `CLIENTE` |
+| `/api/admin/**` | `ADMIN` |
+| `/api/driver/**` | `MOTORISTA` |
+| `/api/freights/**` | `CLIENTE` |
+| Outras rotas `/api/**` | Logado |
+| Fora de `/api` | Negado |
 
-Alem dessas regras de rota, os services checam **posse**: so o dono cancela o
-proprio pedido, e "meus fretes" filtra pelo id do usuario do token.
+Alem dessas regras de rota, os services checam **posse**: apenas o cliente
+dono atua sobre seu pedido, e apenas o motorista alvo o responde. A fila
+confere cidade e disponibilidade. O admin tem rotas proprias para moderacao.
 
 ### 7.3 Outras protecoes
 
@@ -684,25 +830,29 @@ resposta e `{ "message": "..." }` (secao 5.8).
 
 ### Autenticacao
 
-| Metodo | Rota             | Acesso  | Corpo                         | Resposta             |
-| ------ | ---------------- | ------- | ----------------------------- | -------------------- |
-| POST   | `/auth/login`    | Publico | `{ email, password }`         | `{ user, token }`    |
-| POST   | `/auth/register` | Publico | `{ name, email, password }`   | `{ user, token }`    |
+| Metodo | Rota | Acesso | Corpo | Resposta |
+| ------ | ---- | ------ | ----- | -------- |
+| POST | `/auth/login` | Publico | `{ email, password }` | `{ user, token }` |
+| POST | `/auth/register` | Publico | `{ name, email, password }` | `{ user, token }` |
+| POST | `/auth/register-driver` | Publico | `{ email, password, provider: { ... } }` | `{ user, token }` |
 
 `user` = `{ id, name, email, role }`.
 
-### Prestadores (publico)
+### Motoristas (publico)
 
-| Metodo | Rota                      | Acesso  | Descricao                                    |
-| ------ | ------------------------- | ------- | -------------------------------------------- |
-| GET    | `/providers`              | Publico | Catalogo de aprovados, filtrado e paginado   |
-| GET    | `/providers/{id}`         | Publico | Perfil de um aprovado (`404` nos demais; ADMIN ve qualquer um, com nota) |
-| GET    | `/regions`                | Publico | Regioes dos prestadores aprovados            |
-| POST   | `/providers`              | Publico | Cadastro; entra como `PENDENTE`              |
-| POST   | `/providers/{id}/reviews` | Logado  | Avalia um aprovado (`{ rating, comment }`); uma por usuario |
+| Metodo | Rota | Acesso | Descricao |
+| ------ | ---- | ------ | --------- |
+| GET | `/providers` | Publico | Catalogo de aprovados, filtrado e paginado |
+| GET | `/providers/{id}` | Publico | Perfil aprovado; admin pode ver qualquer status |
+| GET | `/regions` | Publico | Regioes dos motoristas aprovados |
+| GET | `/cities` | Publico | Cidades com motorista interno aprovado |
+| POST | `/providers` | Publico | Cadastro externo; entra como `PENDENTE` |
+| POST | `/providers/{id}/reviews` | `CLIENTE` | Avaliacao `{ rating, comment }`; uma por cliente |
 
 Parametros de `GET /providers` (todos opcionais): `search`, `vehicleType`,
-`region`, `service`, `page` (padrao 1), `pageSize` (padrao 9, maximo 50).
+`region`, `service`, `type`, `available`, `city`, `page` (padrao 1) e
+`pageSize` (padrao 9, maximo 50). Perfis `INTERNO` nao incluem contatos
+publicos. `ProviderView` informa `type`, `available` e `documentsVerified`.
 
 Exemplo:
 
@@ -735,13 +885,39 @@ Corpo de `POST /providers`:
 }
 ```
 
+Para cadastro interno, `POST /auth/register-driver` recebe
+`{ "email": "...", "password": "...", "provider": { ...dados acima... } }`.
+WhatsApp ou telefone e obrigatorio dentro de `provider.contacts`. `GET /cities`
+devolve um array de strings.
+
+### Painel do motorista
+
+| Metodo | Rota | Descricao |
+| ------ | ---- | --------- |
+| GET | `/driver/me` | Perfil do motorista logado |
+| PATCH | `/driver/me/availability` | Liga/desliga disponibilidade (`{ available }`) |
+| GET | `/driver/freights` | Pedidos diretos e fila das cidades atendidas |
+| POST | `/driver/freights/{id}/accept` | Aceita pedido direto ou da fila |
+| POST | `/driver/freights/{id}/reject` | Recusa pedido direto |
+| POST | `/driver/freights/{id}/counter-offer` | Envia `{ price }` num pedido direto |
+| POST | `/driver/freights/{id}/start` | Inicia pedido aceito |
+| POST | `/driver/freights/{id}/complete` | Conclui pedido em andamento |
+
+Todas essas rotas exigem `MOTORISTA`. A fila nao revela o telefone do cliente
+antes do aceite; somente motoristas aprovados e disponiveis a veem. Aceitar
+um pedido da fila pode devolver `409` quando outro motorista respondeu antes.
+
 ### Fretes (cliente)
 
-| Metodo | Rota                     | Acesso         | Descricao                         |
-| ------ | ------------------------ | -------------- | --------------------------------- |
-| POST   | `/freights`              | Logado         | Abre um pedido                    |
-| GET    | `/freights/mine`         | Logado         | Pedidos do usuario, mais novos primeiro |
-| POST   | `/freights/{id}/cancel`  | Dono do pedido | Cancela (ate `EM_NEGOCIACAO`)     |
+| Metodo | Rota | Descricao |
+| ------ | ---- | --------- |
+| POST | `/freights` | Abre pedido direto ou para a fila |
+| GET | `/freights/mine` | Pedidos do cliente, mais novos primeiro |
+| POST | `/freights/{id}/cancel` | Cancela `PENDENTE`, `CONTRAPROPOSTA` ou `ACEITO` |
+| POST | `/freights/{id}/counter-offer/accept` | Aceita a contraproposta |
+| POST | `/freights/{id}/counter-offer/reject` | Recusa a contraproposta |
+
+Todas essas rotas exigem `CLIENTE`; as acoes sobre um pedido exigem o dono.
 
 Corpo de `POST /freights`:
 
@@ -751,22 +927,34 @@ Corpo de `POST /freights`:
   "origin": "Santos - Gonzaga",
   "destination": "Sao Vicente - Centro",
   "description": "Mudanca de kitnet: cama, guarda-roupa e geladeira.",
+  "city": "Santos",
   "scheduledDate": "2026-10-20",
+  "scheduledTime": "09:00",
+  "contactPhone": "13 99999-0000",
+  "priceOffered": 350.00,
   "vehicleType": "FIORINO",
   "service": "MUDANCA_RESIDENCIAL"
 }
 ```
 
-`providerId`, `vehicleType` e `service` podem ser `null`.
+`providerId`, `vehicleType` e `service` podem ser `null`. `providerId: null`
+envia o pedido para a fila da cidade. A resposta inclui `scheduledAt`,
+`responseDeadline`, `priceOffered`, `counterPrice`, `agreedPrice` e `status`.
+`providerContacts` e `clientContact` so aparecem quando o pedido foi aceito.
+`contactPhone` traz o telefone informado pelo cliente apenas na resposta do
+dono do pedido e do admin; no painel do motorista e `null` ate o aceite, e
+depois o motorista usa `clientContact.phone`. O cliente usa `contactPhone`
+para preencher uma nova tentativa a partir de um pedido recusado ou expirado.
+Pedidos antigos podem ter valores nulos e sao exibidos como "A combinar".
 
 ### Administracao
 
-| Metodo | Rota                     | Acesso | Corpo                         | Descricao                     |
-| ------ | ------------------------ | ------ | ----------------------------- | ----------------------------- |
-| GET    | `/admin/providers`       | ADMIN  | —                             | Todos os prestadores, qualquer status |
-| PATCH  | `/admin/providers/{id}`  | ADMIN  | `{ status, documentNote? }`   | Curadoria                     |
-| GET    | `/admin/freights`        | ADMIN  | —                             | Todos os pedidos              |
-| PATCH  | `/admin/freights/{id}`   | ADMIN  | `{ status }`                  | Avanca ou cancela um pedido   |
+| Metodo | Rota | Corpo | Descricao |
+| ------ | ---- | ----- | --------- |
+| GET | `/admin/providers` | — | Todos os motoristas, qualquer status |
+| PATCH | `/admin/providers/{id}` | `{ status, documentNote? }` | Curadoria; aprovar marca documentos verificados |
+| GET | `/admin/freights` | — | Todos os pedidos |
+| PATCH | `/admin/freights/{id}` | `{ status }` | Moderacao ou apoio a pedido antigo externo |
 
 ---
 
@@ -793,9 +981,10 @@ src/
 
 O app e "embrulhado" em quatro provedores, de fora para dentro:
 
-1. **`QueryClientProvider`** — cache de dados do React Query. Configurado
-   para considerar os dados frescos por 30 segundos, nao recarregar ao trocar
-   de aba e tentar de novo uma vez em caso de falha.
+1. **`QueryClientProvider`** — cache de dados do React Query. Por padrao,
+   considera os dados frescos por 30 segundos e tenta de novo uma vez em
+   caso de falha. As consultas dos paineis sobrescrevem o padrao para
+   atualizar a cada 10 segundos e ao voltar para a aba.
 2. **`BrowserRouter`** — habilita as rotas por URL.
 3. **`AuthProvider`** — disponibiliza a sessao para qualquer tela.
 4. **`IconContext.Provider`** — padroes dos icones Phosphor: tamanho `1em`
@@ -810,24 +999,29 @@ O `main.tsx` tambem importa a fonte Plus Jakarta Sans
 Definidas em [`App.tsx`](../src/App.tsx). Todas ficam dentro do `Layout`
 (barra de navegacao + rodape).
 
-| URL               | Tela               | Acesso  | O que faz                                                   |
-| ----------------- | ------------------ | ------- | ----------------------------------------------------------- |
-| `/`               | `Home`             | Publico | Apresentacao e prestadores em destaque                      |
-| `/catalogo`       | `Catalog`          | Publico | Busca, filtros e paginacao                                  |
-| `/prestador/:id`  | `ProviderProfile`  | Publico | Perfil, contatos (WhatsApp/telefone/e-mail) e avaliacoes    |
-| `/seja-prestador` | `ProviderRegister` | Publico | Formulario de cadastro de prestador                         |
-| `/login`          | `Login`            | Publico | Entrar                                                      |
-| `/cadastro`       | `Register`         | Publico | Criar conta de cliente                                      |
-| `/solicitar`      | `RequestFreight`   | Logado  | Abrir pedido; aceita `?prestador=<id>` para ja vir escolhido |
-| `/meus-fretes`    | `MyFreights`       | Logado  | Acompanhar e cancelar os proprios pedidos                   |
-| `/admin`          | `AdminDashboard`   | ADMIN   | Curadoria de prestadores + gestao de fretes (`AdminFreights`) |
-| qualquer outra    | `NotFound`         | Publico | Pagina 404                                                  |
+| URL | Tela | Acesso | O que faz |
+| --- | ---- | ------ | --------- |
+| `/` | `Home` | Publico | Apresentacao e motoristas em destaque |
+| `/catalogo` | `Catalog` | Publico | Busca, filtros, selos e paginacao |
+| `/motorista/:id` | `ProviderProfile` | Publico | Perfil; contato publico so para `EXTERNO` |
+| `/seja-motorista` | `ProviderRegister` | Publico | Cadastro interno ou externo |
+| `/login` | `Login` | Publico | Entrar e seguir para o painel do papel |
+| `/cadastro` | `Register` | Publico | Criar conta de cliente |
+| `/solicitar` | `RequestFreight` | `CLIENTE` | Criar pedido direto ou para a fila; aceita `?motorista=<id>` |
+| `/meus-fretes` | `MyFreights` | `CLIENTE` | Acompanhar pedidos e responder a contraproposta |
+| `/painel-motorista` | `DriverDashboard` | `MOTORISTA` | Disponibilidade, pedidos, aceite e andamento |
+| `/admin` | `AdminDashboard` | `ADMIN` | Curadoria, moderacao e apoio |
+| `/prestador/:id`, `/seja-prestador` | Redirecionamento | Publico | Mantem links antigos funcionando |
+| qualquer outra | `NotFound` | Publico | Pagina 404 |
 
-Os botoes de contato do perfil sao links nativos: `https://wa.me/<numero>?text=...`
-abre o WhatsApp com uma saudacao ja escrita (secao 9.7), `tel:` abre o
-discador e `mailto:` o cliente de e-mail. Nao ha nenhuma intermediacao da
-plataforma nessa conversa: a mensagem so chega ao prestador se o cliente
-enviar.
+No catalogo, o selo "Contratar no App" identifica motorista interno; o
+cliente cria um pedido. "Contato Direto" identifica externo e oferece
+`wa.me` e `tel:`. O contato do interno so aparece para as partes depois do
+aceite, no painel do pedido. Links nativos abrem WhatsApp ou discador apenas
+quando o cliente clica.
+
+O formulario tambem aceita `?prestador=<id>` em links antigos e passa a usar
+`?motorista=<id>` nos links novos.
 
 ### 9.3 Rotas protegidas
 
@@ -836,7 +1030,7 @@ as telas restritas:
 
 - sem login → redireciona para `/login`, guardando a pagina de origem para
   voltar depois de entrar;
-- com `requireAdmin` e usuario nao-admin → redireciona para `/`.
+- com `roles` e papel nao permitido → redireciona para uma rota acessivel.
 
 Importante: isso e **so conforto de navegacao**. Quem garante a seguranca e a
 API (secao 7.2). Mesmo que alguem burle o front, a API recusa a chamada.
@@ -844,11 +1038,12 @@ API (secao 7.2). Mesmo que alguem burle o front, a API recusa a chamada.
 ### 9.4 Sessao (`lib/auth.tsx`)
 
 O `AuthProvider` guarda `{ user, token }` e expoe pelo hook `useAuth()`:
-`user`, `token`, `isAuthenticated`, `isAdmin`, `login()`, `register()` e
-`logout()`.
+`user`, `token`, `isAuthenticated`, `isAdmin`, `isClient`, `isDriver`,
+`login()`, `register()`, `registerDriver()` e `logout()`.
 
 A sessao e salva no `localStorage` com a chave **`fretehub:auth`**, entao
-sobrevive a recarregar a pagina. `logout()` apaga essa chave.
+sobrevive a recarregar a pagina. Login, troca de conta e logout limpam o
+cache do React Query, para nao mostrar dados de outro papel na mesma aba.
 
 **Sessao vencida.** O front encerra a sessao sozinho em tres situacoes:
 
@@ -875,12 +1070,12 @@ Todas as chamadas passam pela funcao `request()`, que:
 2. adiciona `Content-Type: application/json` e o `Authorization: Bearer` lido
    do `localStorage`;
 3. se a rede falhar, lanca "Nao foi possivel conectar ao servidor.";
-4. se a API responder erro, lanca um `Error` com a `message` vinda da API.
+4. se a API responder erro, lanca um erro com a `message` e o status HTTP.
 
-Assim, as telas so precisam mostrar `error.message`. Cada rota da API tem uma
-funcao correspondente (`listPublicProviders`, `createFreight`,
-`updateProviderStatus`...), e `types.ts` define o formato exato de cada
-resposta.
+Assim, as telas mostram `error.message` e podem tratar `404` ou `409` pelo
+codigo, sem comparar texto. Cada rota da API tem uma funcao correspondente
+(`listPublicProviders`, `createFreight`, `updateProviderStatus`...), e
+`types.ts` define o formato de cada resposta.
 
 ### 9.6 Dados nas telas (React Query)
 
@@ -889,25 +1084,28 @@ As telas nao chamam `fetch` direto. Usam:
 - **`useQuery`** para ler — ex.: `useQuery({ queryKey: ["providers", filtros, pagina], queryFn: ... })`.
   O React Query cuida de carregando/erro/cache. A `queryKey` identifica o
   dado: mudou a chave (ex.: outro filtro), busca de novo.
-- **`useMutation`** para gravar — ex.: aprovar um prestador, cancelar um frete.
+- **`useMutation`** para gravar — ex.: aprovar um motorista, aceitar um frete.
 
 Depois de gravar, a tela **invalida** as chaves afetadas para recarregar o que
-mudou. Exemplo: ao aprovar um prestador, o painel invalida
-`["admin","providers"]`, `["providers"]` e `["regions"]`, porque o catalogo e
-a lista de regioes mudaram tambem.
+mudou. Exemplo: ao aprovar um motorista, o painel invalida dados do admin,
+catalogo, regioes e cidades. Os paineis do cliente e do motorista consultam
+a API a cada 10 s e quando a aba volta ao foco. O menu usa a mesma consulta
+do motorista para mostrar quantos pedidos precisam de acao.
 
 Chaves usadas:
 
-| Chave                             | Dado                         |
-| --------------------------------- | ---------------------------- |
-| `["providers", filtros, pagina]`  | Pagina do catalogo           |
-| `["providers", "destaques"]`      | Destaques da Home            |
-| `["providers", "select"]`         | Opcoes de Solicitar frete    |
-| `["provider", id]`                | Um perfil                    |
-| `["regions"]`                     | Regioes para o filtro        |
-| `["freights", "mine", clientId]`  | Meus fretes                  |
-| `["freights", "all"]`             | Todos os fretes (admin)      |
-| `["admin", "providers"]`          | Todos os prestadores (admin) |
+| Chave | Dado |
+| ----- | ---- |
+| `["providers", filtros, pagina]` | Pagina do catalogo |
+| `["providers", "destaques"]` | Destaques da Home |
+| `["providers", "select"]` | Opcoes de Solicitar frete |
+| `["provider", id]` | Um perfil |
+| `["regions"]`, `["cities"]` | Regioes e cidades |
+| `["freights", "mine", user.id]` | Pedidos do cliente |
+| `["freights", "driver", user.id]` | Caixa e fila do motorista; menu e painel |
+| `["driver", "me"]` | Perfil e disponibilidade do motorista |
+| `["freights", "all"]` | Todos os fretes (admin) |
+| `["admin", "providers"]` | Todos os motoristas (admin) |
 
 No catalogo, a busca textual tem **debounce**: a consulta so dispara um
 instante depois que a pessoa para de digitar, para nao chamar a API a cada
@@ -924,26 +1122,24 @@ edita se quiser e envia.
 | `whatsappNumber(raw)`          | Converte o numero cadastrado para o formato do wa.me (veja abaixo)       |
 | `whatsappLink(numero, texto)`  | Monta `https://wa.me/<numero>?text=<texto codificado>`                   |
 | `profileGreeting()`            | Saudacao do botao "Chamar no WhatsApp" do perfil                         |
-| `freightMessage(pedido, nome)` | Texto com origem, destino, data, veiculo e servico (se houver) e a carga |
+| `freightMessage(pedido, nome)` | Mensagem com detalhes do pedido apos o aceite |
 
 **Numero.** `whatsappNumber` deixa so os digitos e tira zeros a esquerda. Com
 10 ou 11 digitos (DDD + numero) e sem `+` na frente, acrescenta o `55` do
 Brasil; nos demais casos usa os digitos como estao. So devolve `null` (e a
 tela esconde o WhatsApp) quando o campo nao tem nenhum digito. Um numero sem
 DDD gera um link que o WhatsApp nao reconhece; por isso o cadastro de
-prestador pede o DDD.
+motorista pede o DDD.
 
-**Depois de registrar um pedido** (`/solicitar`): se o prestador escolhido tem
-WhatsApp, o formulario da lugar a tela "Pedido registrado!", que mostra a
-mensagem pronta e o botao "Enviar pelo WhatsApp" (abre em nova aba). O numero
-vem da lista de prestadores do formulario ou do perfil que abriu a tela
-(`?prestador=`). Sem prestador, ou com prestador sem WhatsApp, nada muda: a
-tela vai direto para `/meus-fretes`. Abrir `/solicitar` de novo a partir da
-tela de confirmacao (pelo rodape, por exemplo) traz o formulario em branco.
+**Contato direto:** o catalogo e o perfil do `EXTERNO` oferecem WhatsApp e
+telefone sem abrir pedido no app. **Depois do aceite no app:** o cliente ve
+o contato do motorista interno em `/meus-fretes` e pode abrir o WhatsApp
+com uma mensagem sobre o pedido. O motorista ve telefone e e-mail do
+cliente em `/painel-motorista`. Antes do aceite esses campos nao sao
+enviados nas respostas do pedido.
 
-O WhatsApp nao abre sozinho porque a nova aba so seria criada depois da
-resposta da API, e o navegador bloquearia como pop-up. Por isso o clique fica
-com o cliente.
+O WhatsApp nao abre sozinho: o cliente revisa a mensagem e escolhe quando
+enviar. O clique do cliente tambem evita bloqueio de pop-up pelo navegador.
 
 ### 9.8 Design system e componentes de interface
 
@@ -979,13 +1175,13 @@ que carrega significado sozinho recebe `aria-hidden={false}`, `role="img"` e
 | ----------------------------------------- | -------------------------------------------------------------- |
 | `Button`, `ButtonLink`, `buttonClasses()` | Botao; link com cara de botao; as mesmas classes para um `<a>` |
 | `Field`, `FieldSet`                       | Rotulo, dica e erro de um campo (ou de um grupo, com `legend`) |
-| `Input`, `Textarea`, `Select`             | Campos; recebem do `Field` os atributos `aria-*`               |
+| `Input`, `Textarea`, `Select`, `Switch`   | Campos e disponibilidade; recebem os atributos `aria-*`         |
 | `Alert`, `ErrorNote`                      | Avisos (info, sucesso, atencao, erro)                          |
 | `Spinner`, `ButtonSpinner`, `Skeleton`    | Carregando: pagina, dentro do botao e espaco reservado         |
 | `Card`, `FormSection`, `PageHeader`       | Estrutura: cartao, bloco de formulario e titulo da pagina      |
 | `EmptyState`, `DetailItem`, `BackLink`    | Lista vazia, item de detalhe com icone e link de voltar        |
 
-Fora dele: `Badge` (status), `StatCard`, `VehicleIcon`, `ProviderCard`,
+Fora dele: `Badge` (status e tipo de contratacao), `StatCard`, `VehicleIcon`, `ProviderCard`,
 `RatingStars`, `AuthShell` (moldura do login e do cadastro) e `Logo`.
 
 **Acessibilidade.**
@@ -994,48 +1190,55 @@ Fora dele: `Badge` (status), `StatCard`, `VehicleIcon`, `ProviderCard`,
   claro e `slate-300`/`400` no navy.
 - O foco e sempre visivel. Dentro de `.surface-dark` o contorno fica branco.
 - O primeiro Tab leva ao link "Pular para o conteudo".
-- Areas de toque de 40 a 48 px (`min-h-10`, `min-h-11`, `min-h-12`).
+- Areas de toque de pelo menos 44 px (`min-h-11`, `min-h-12`).
 - Todo campo tem rotulo visivel (`Field`). O erro aparece abaixo do campo,
   ligado por `aria-describedby`. No celular a fonte dos campos e de 16 px,
   para o iOS nao dar zoom.
 - Nunca `<Link><Button /></Link>`: sao dois elementos interativos para a
   mesma acao. Use `ButtonLink`, ou `buttonClasses()` num `<a>` externo.
 - Links que abrem nova aba avisam "(abre em nova aba)" para leitor de tela.
+- Status e disponibilidade aparecem com icone e texto, nunca so por cor.
+- O toggle de disponibilidade usa `role="switch"` e `aria-checked`.
 
 ---
 
 ## 10. Fluxos de ponta a ponta
 
-### 10.1 Prestador entra no catalogo
+### 10.1 Motorista entra no catalogo
 
-1. O prestador preenche `/seja-prestador` → `POST /api/providers`.
-2. A API valida e grava com status `PENDENTE`. Ele **nao** aparece no
-   catalogo.
-3. A equipe entra em `/admin`, confere os dados/documentos e registra uma nota
-   interna (ex.: "CNH e CRLV validados").
-4. A equipe aprova → `PATCH /api/admin/providers/{id}` com `APROVADO`.
-5. O prestador passa a aparecer em `/catalogo` e pode ser escolhido em
-   pedidos. A qualquer momento a equipe pode desativa-lo (`INATIVO`) e
-   reativa-lo.
+1. O motorista preenche `/seja-motorista`. Se marcar "Receber pedidos pelo
+   app", informa e-mail, senha e telefone ou WhatsApp; a API cria conta e
+   perfil `INTERNO`. Sem marcar, cria perfil `EXTERNO` de contato direto.
+2. O perfil entra como `PENDENTE` e fica fora do catalogo. A equipe entra
+   em `/admin`, confere CNH e CRLV e aprova. Isso marca documentos
+   verificados. Rejeitar ou desativar impede novos pedidos.
+3. O perfil aprovado aparece no catalogo. O interno liga a disponibilidade
+   em `/painel-motorista`; o externo recebe contatos diretos do cliente.
 
-### 10.2 Cliente contrata um frete
+### 10.2 Cliente contrata pelo app
 
-1. O cliente busca em `/catalogo` e abre um perfil.
-2. Fala com o prestador direto pelo WhatsApp (o botao do perfil ja abre a
-   conversa com uma saudacao), telefone ou e-mail. Preco e detalhes sao
-   combinados entre os dois.
-3. Para registrar, clica em solicitar → `/solicitar?prestador=<id>` (precisa
-   estar logado) → `POST /api/freights`. O pedido nasce `ABERTA`. Se o
-   prestador tem WhatsApp, a tela seguinte oferece enviar os dados do pedido
-   numa mensagem pronta (secao 9.7).
-4. Acompanha em `/meus-fretes`. Pode cancelar enquanto `ABERTA` ou
-   `EM_NEGOCIACAO`.
-5. A equipe acompanha em `/admin` e avanca o status:
-   `EM_NEGOCIACAO → CONFIRMADA → CONCLUIDA`.
-6. Depois do servico, o cliente pode avaliar o prestador no perfil (uma vez).
+1. Em `/catalogo`, o cliente identifica o selo "Contratar no App" e abre
+   `/solicitar` com o motorista selecionado. Tambem pode criar um pedido
+   para a fila de uma cidade.
+2. Informa origem, destino, carga, cidade, data, horario, telefone e valor
+   oferecido. A API cria um pedido `PENDENTE` e define o prazo de resposta.
+3. O painel do motorista consulta a API a cada 10 s. O alvo direto pode
+   aceitar, recusar ou contrapropor. Na fila, qualquer motorista aprovado
+   e disponivel da cidade pode aceitar pelo valor oferecido. O primeiro
+   aceite vence; o concorrente recebe `409`.
+4. Se houver contraproposta, o cliente recebe novo prazo e aceita ou recusa.
+   Quando aceita, o valor acordado e gravado. Uma segunda rodada nao existe.
+5. Apos o aceite, os paineis liberam os contatos das partes. O motorista
+   inicia e conclui o servico. O cliente pode avaliar o motorista no perfil.
+6. Se o prazo vencer, a API marca `EXPIRADO` ao consultar. Recusa e
+   expiracao permitem abrir outro pedido pre-preenchido ou enviar a fila,
+   preservando cada tentativa no historico.
 
-O pedido tambem pode ser aberto **sem prestador**, quando o cliente ainda nao
-escolheu ninguem.
+### 10.3 Cliente usa contato direto
+
+O selo "Contato Direto" identifica um motorista externo. Os botoes do
+catalogo e do perfil abrem `wa.me` ou `tel:`. Preco e detalhes sao combinados
+fora da plataforma; esse perfil nao recebe pedidos pelo fluxo de aceite.
 
 ---
 
@@ -1057,23 +1260,36 @@ Cada teste roda dentro de uma transacao que e **desfeita ao final**
 (`@Transactional`). Os dados do seed ficam sempre disponiveis e um teste nao
 contamina o outro.
 
-| Classe                     | O que cobre                                                                  |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| `AuthApiTest`              | Cadastro, e-mail duplicado, senha curta, login valido e invalido             |
-| `ProviderCurationApiTest`  | Catalogo so com aprovados, visao do admin, aprovacao publica, cliente nao cura, cadastro entra pendente, cadastro sem contato, perfil pendente da `404` (anonimo e cliente), nota interna fora do perfil e do catalogo, admin ve pendente com nota, nao avalia pendente |
-| `FreightStatusApiTest`     | Avanco de status, transicao invalida, cliente sem acesso a rota admin, cancelamento antes/depois da confirmacao, nao-dono nao cancela |
-| `ReviewApiTest`            | Avaliacao unica por usuario, usuarios diferentes, nota fora de 1..5          |
-| `CorsApiTest`              | Front configurado liberado no preflight, outro site recusado com `403`       |
+| Classe | O que cobre |
+| ------ | ---------- |
+| `AuthApiTest` | Cadastro e login, inclusive papel `MOTORISTA` |
+| `DriverAccountApiTest` | Cadastro interno, e-mail unico, contato, disponibilidade e acesso por papel |
+| `ProviderCurationApiTest` | Curadoria, documentos verificados, contatos publicos e nota interna |
+| `FreightStatusApiTest` | Moderacao e apoio do admin |
+| `FreightFlowApiTest` | Criacao, oferta, contraproposta, posse, cancelamento e andamento |
+| `FreightQueueApiTest` | Cidade, disponibilidade, aceite concorrente e privacidade |
+| `FreightExpiryApiTest` | Expiracao ao consultar e bloqueio de resposta fora do prazo |
+| `ContactVisibilityApiTest` | Contatos antes e depois do aceite |
+| `ErrorMappingApiTest` | JSON e enum invalidos com `400` e `message` |
+| `ReviewApiTest` | Avaliacao exclusiva do cliente, unicidade e nota valida |
+| `CorsApiTest` | Preflight permitido e origem nao autorizada |
 
-`ApiTestSupport` e a base comum: tem o helper `login()` que devolve um token e
-as credenciais do seed.
+`ApiTestSupport` e a base comum: tem credenciais do seed e helpers para login,
+criar frete e colocar o prazo no passado sem esperar o relogio.
 
 **Limite importante:** nos testes o schema e gerado pelo Hibernate e o Flyway
 fica desligado. Ou seja, os testes validam a **logica**, nao as migrations. As
 migrations sao validadas ao subir a API contra o PostgreSQL (o `validate` do
 Hibernate falha se algo divergir).
 
-O frontend nao tem testes automatizados; `npm run lint` checa os tipos.
+No PostgreSQL local, teste a V2 duas vezes: sobre dados V1 existentes e num
+schema vazio. Confira status migrados, `scheduled_at`, `version`, `type` e
+`documents_verified`; depois, com `curl`, confira JSON malformado como `400`,
+`GET /api/freights/mine` sem falha de transacao somente leitura e duas
+aceitacoes paralelas da fila com respostas `200` e `409`. No front, rode
+`npm run build` e `npm run lint`. O fluxo completo pode ser conferido em
+janelas anonimas separadas para cliente e motorista, inclusive expiracao com
+`FREIGHT_RESPONSE_MINUTES=1`.
 
 ---
 
@@ -1083,17 +1299,22 @@ Coisas que funcionam hoje, mas que convem saber antes de evoluir ou publicar.
 
 **Cadastro aberto**
 
-- O cadastro de prestador e publico e sem limite de envios. Hoje o risco e so
-  de lixo na fila de curadoria, mas vale um limite por IP ou captcha antes de
-  publicar.
+- O cadastro de motorista e publico e sem limite de envios. A curadoria
+  segura a publicacao dos perfis; limite por IP ou captcha fica para depois.
 
 **Regras de negocio**
 
 - A curadoria aceita qualquer troca de status (ex.: `REJEITADO → APROVADO`
   direto), sem trilha de quem mudou e quando.
-- Avaliacoes nao exigem frete concluido com o prestador. Qualquer usuario
-  logado, inclusive admin, pode avaliar um prestador aprovado.
-- A troca de status do frete nao registra historico; so `updated_at` muda.
+- Avaliacoes sao exclusivas de `CLIENTE`, mas nao exigem frete concluido com
+  aquele motorista.
+- Cada tentativa de pedido e uma linha. A maquina de status nao tem ciclos;
+  nao existe uma tabela separada de eventos de transicao.
+- A expiracao acontece ao consultar um pedido; nao ha job agendado. Um
+  pedido vencido pode permanecer `PENDENTE` no banco ate ser lido, mas a
+  fila exclui prazos vencidos imediatamente na consulta.
+- A notificacao no app e uma consulta a cada 10 s e ao voltar para a aba.
+  Nao ha push, e-mail nem SMS. Ha so uma rodada de contraproposta.
 
 **Sessao no front**
 
@@ -1105,9 +1326,9 @@ Coisas que funcionam hoje, mas que convem saber antes de evoluir ou publicar.
 
 **Escala e operacao**
 
-- O filtro do catalogo roda **em memoria**: a cada busca, todos os prestadores
+- O filtro do catalogo roda **em memoria**: a cada busca, todos os motoristas
   aprovados (com regioes, servicos e avaliacoes) sao lidos do banco. Atende
-  bem algumas centenas de prestadores; acima disso, mover os filtros para
+  bem algumas centenas de motoristas; acima disso, mover os filtros para
   consultas SQL com paginacao no banco.
 - Os ids usam 8 caracteres de um UUID (~4 bilhoes de combinacoes por
   prefixo). Colisao e improvavel no volume atual, mas nao impossivel; em caso
@@ -1117,12 +1338,15 @@ Coisas que funcionam hoje, mas que convem saber antes de evoluir ou publicar.
   monitoramento.
 - No plano free do Render, a API dorme apos 15 min sem acesso e o primeiro
   acesso seguinte leva 1 a 2 min.
+- Os testes H2 nao executam a V2; validar migrations exige PostgreSQL.
 
 **Fora do escopo, de proposito**
 
-Conta de prestador, propostas de preco, notificacoes, chat, mapas, pagamento,
-comissao e upload de foto (a foto e uma URL; o campo `photoUrl` ja e o
-contrato para um futuro upload no Cloudinary).
+Push em tempo real (SSE/WebSocket), chat, GPS, mapas, preco por distancia,
+pagamento, upload de documentos e fotos, edicao do proprio perfil pelo
+motorista, varias rodadas de contraproposta, desistir apos o aceite sem
+apoio da equipe, varios veiculos por motorista e limite de cadastros por IP.
+O campo `photoUrl` permite usar uma foto hospedada por URL ate haver upload.
 
 ---
 
@@ -1130,7 +1354,10 @@ contrato para um futuro upload no Cloudinary).
 
 | Termo            | Significado                                                                 |
 | ---------------- | --------------------------------------------------------------------------- |
-| **Curadoria**    | Analise e aprovacao de prestadores pela equipe antes de aparecerem          |
+| **Curadoria**    | Analise e aprovacao de motoristas pela equipe antes de aparecerem           |
+| **Motorista interno** | Perfil `INTERNO` com conta, painel e pedidos no app                   |
+| **Motorista externo** | Perfil `EXTERNO` sem conta; contato por WhatsApp ou telefone          |
+| **Fila**        | Pedido sem motorista escolhido, visivel aos disponiveis da cidade           |
 | **DTO**          | Objeto que define o formato do JSON trocado entre front e API               |
 | **Entidade**     | Classe Java que representa uma tabela do banco                              |
 | **Migration**    | Arquivo SQL versionado que cria ou altera a estrutura do banco              |

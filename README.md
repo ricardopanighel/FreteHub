@@ -1,9 +1,9 @@
 # FreteHub
 
 Plataforma web de intermediacao de **fretes urbanos e pequenas mudancas**.
-Na primeira entrega, funciona como um **catalogo com curadoria**: a equipe
-cadastra e valida os prestadores, e os clientes os contatam diretamente pelo
-canal que preferirem (WhatsApp, telefone ou e-mail).
+Combina duas formas de contratacao: motoristas do app recebem pedidos e respondem
+a ofertas de valor; motoristas de contato direto divulgam WhatsApp e telefone.
+Todos passam pela curadoria da equipe antes de aparecer no catalogo.
 
 Equipe: Caio Monte Alegre, Lucas Silva Fagundes, Ricardo Panighel Lazarini.
 
@@ -21,7 +21,8 @@ Equipe: Caio Monte Alegre, Lucas Silva Fagundes, Ricardo Panighel Lazarini.
 | Banco       | PostgreSQL 16                                   |
 | Auth        | JWT (stateless)                                 |
 
-A foto do prestador e uma URL. O upload via Cloudinary fica para quando houver conta; o campo `photoUrl` ja e o contrato.
+A foto do motorista e uma URL. O upload de arquivos fica para uma versao futura;
+o campo `photoUrl` ja define o contrato.
 
 ## Como rodar
 
@@ -46,8 +47,8 @@ npm install && npm run dev             # http://localhost:5173
 ```
 
 O Vite encaminha `/api` para a API. O schema e criado/atualizado pelas
-migrations do Flyway na subida; na primeira vez, o banco vazio recebe as contas
-e os prestadores de demonstracao.
+migrations do Flyway na subida; na primeira vez, o banco vazio recebe as contas,
+os motoristas e os fretes de demonstracao.
 
 Outros scripts:
 
@@ -55,7 +56,7 @@ Outros scripts:
 npm run build    # type-check + build de producao
 npm run preview  # serve o build localmente
 npm run lint     # type-check (tsc --noEmit)
-cd backend && ./mvnw test   # testes de API (login, curadoria, status, avaliacao)
+cd backend && ./mvnw test   # testes de API (contas, curadoria, fretes, fila, contatos)
 ```
 
 ## Configuracao
@@ -70,6 +71,7 @@ sobrevivem a reinicializacao.
 | `SPRING_PROFILES_ACTIVE` | `dev`                     | `prod`              |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | banco local `fretehub` | **obrigatorias**    |
 | `JWT_SECRET`             | opcional (chave efemera)  | **obrigatoria**, 32+ caracteres |
+| `FREIGHT_RESPONSE_MINUTES` | `30`                  | opcional            |
 
 Com `SPRING_PROFILES_ACTIVE=prod`, nao ha defaults: a aplicacao nao sobe sem
 `DB_*` e `JWT_SECRET`. Nenhum segredo fica versionado.
@@ -91,60 +93,63 @@ A versao online usa dois servicos no **Render** (plano free), descritos no
 
 Na primeira subida, o Flyway cria as tabelas e o seed carrega as contas de
 demonstracao. A API dorme apos 15 min sem acesso e leva 1 a 2 min para
-acordar. Detalhes na secao 3.1 da [documentacao tecnica](docs/documentacao-tecnica.md#31-publicar-render--neon).
+acordar. Cada push na `main` dispara o deploy. A V2 atualiza os dados existentes;
+o seed novo so entra automaticamente num banco sem usuarios. Veja a secao 3.1
+da [documentacao tecnica](docs/documentacao-tecnica.md#31-publicar-render--neon).
 
 ## Banco e migrations
 
 O schema pertence ao **Flyway** (`backend/src/main/resources/db/migration/`) e o
 Hibernate roda em `ddl-auto: validate` — valida que as entidades batem com o que
-as migrations criaram, sem alterar o schema. Para recomecar do zero em dev,
-apague as tabelas (ou recrie o banco `fretehub`) e suba a API: o Flyway recria o
-schema e o seed repovoa.
+as migrations criaram, sem alterar o schema. A V2 adiciona tipos de motorista,
+login, disponibilidade, oferta e prazo aos pedidos. Para recomecar do zero em
+desenvolvimento, apague apenas o schema do PostgreSQL **local** e suba a API: o
+Flyway recria o schema e o seed repovoa. Zerar o Neon apaga dados online e
+requer confirmacao explicita.
 
-Os testes rodam contra um H2 em memoria (modo PostgreSQL), entao `./mvnw test`
-nao exige Docker nem PostgreSQL no ar.
+Os testes rodam contra um H2 em memoria (modo PostgreSQL), com Flyway desligado.
+`./mvnw test` nao exige PostgreSQL, mas nao valida a SQL da V2. Essa verificacao
+exige subir a API contra o PostgreSQL local.
 
 ## Funcionalidades do MVP
 
-- **Home** com explicacao do fluxo e prestadores em destaque.
-- **Catalogo publico** (sem login) com:
-  - busca textual (nome, regiao, servico) com debounce;
-  - filtros por tipo de veiculo, regiao e servico;
-  - paginacao na API.
-- **Perfil do prestador** com dados completos, regioes, servicos, avaliacoes e
-  **canais de contato direto** (WhatsApp / telefone / e-mail). O botao de
-  WhatsApp abre a conversa com uma saudacao ja escrita.
-- **Cadastro de prestador** ("Seja um prestador") que entra como `PENDENTE`.
-- **Autenticacao** (cliente e admin) com JWT. O cliente da sessao fica no
-  `localStorage` (`fretehub:auth`).
-- **Painel da equipe (admin)**: fluxo de curadoria para aprovar, rejeitar,
-  desativar e reativar prestadores. Rota protegida por role `ADMIN`.
-- **Solicitacao de frete**: cliente logado registra origem, destino, data
-  e descricao da carga, com ou sem prestador escolhido. Se o prestador tem
-  WhatsApp, a confirmacao oferece enviar os dados do pedido numa
-  **mensagem pronta**.
-- **Acompanhamento**: o cliente ve o status em "Meus fretes" (aberta, em
-  negociacao, confirmada, concluida ou cancelada) e pode cancelar enquanto
-  o pedido ainda nao foi confirmado.
-- **Painel da equipe**: alem da curadoria, a equipe avanca o status das
-  solicitacoes.
-- **Avaliacoes**: clientes logados podem avaliar prestadores — uma avaliacao
-  por cliente e prestador.
-- Design **responsivo** (mobile/desktop) e acessivel (contraste AA, foco
-  visivel, navegacao por teclado), com design system proprio (secao 9.8 da
-  documentacao tecnica).
+- **Catalogo publico** com busca, filtros, paginacao e selos "Contratar no App"
+  ou "Contato Direto". O motorista externo oferece links `wa.me` e `tel:`;
+  os contatos do interno ficam privados ate o aceite do pedido.
+- **Cadastro de motorista** em `/seja-motorista`. A opcao "Receber pedidos pelo
+  app" cria uma conta `MOTORISTA`; sem ela, cria apenas o perfil de contato
+  direto. Ambos entram como `PENDENTE` e passam pela curadoria da equipe.
+- **Solicitacao de frete** pelo cliente com origem, destino, cidade, data e
+  horario, telefone e valor oferecido. O cliente escolhe um motorista interno
+  disponivel ou envia o pedido para a fila da cidade.
+- **Aceite no app**: o motorista recebe pedidos diretos e da fila, aceita ou
+  recusa um pedido direto e pode fazer uma contraproposta. O cliente aceita ou
+  recusa essa contraproposta. A primeira resposta a um pedido da fila vence.
+- **Prazo de resposta** de 30 minutos por padrao, configuravel por
+  `FREIGHT_RESPONSE_MINUTES`. O app atualiza os paineis a cada 10 segundos e
+  quando a aba volta ao foco; pedidos vencidos expiram ao ser consultados.
+- **Paineis** do cliente, motorista e equipe. Depois do aceite, cliente e
+  motorista veem os canais de contato para combinar a execucao. O motorista
+  inicia e conclui o servico; a equipe faz curadoria, moderacao e apoio.
+- **Avaliacoes** por clientes logados, uma por cliente e motorista aprovado.
+- Interface **responsiva** e acessivel, com contraste AA, foco visivel,
+  navegacao por teclado e design system proprio (secao 9.8 da documentacao).
 
 ## Contas de demonstracao
 
-| Perfil  | E-mail                | Senha       |
-| ------- | --------------------- | ----------- |
-| Admin   | admin@fretehub.com    | admin123    |
-| Cliente | cliente@fretehub.com  | cliente123  |
+| Perfil                          | E-mail                 | Senha        |
+| ------------------------------- | ---------------------- | ------------ |
+| Admin                           | admin@fretehub.com     | admin123     |
+| Cliente                         | cliente@fretehub.com   | cliente123   |
+| Motorista aprovado, disponivel  | motorista@fretehub.com | motorista123 |
+| Motorista aprovado, indisponivel | ana@fretehub.com       | motorista123 |
+| Motorista pendente              | pedro@fretehub.com     | motorista123 |
 
-> Os dados de demonstracao entram no PostgreSQL na primeira subida da API,
-> a partir de `backend/src/main/resources/seed/demo.json`. Para recomecar,
-> apague as tabelas (ou o banco `fretehub`) e suba a API de novo. A sessao
-> do navegador continua em `fretehub:auth`.
+> Os dados de demonstracao entram no PostgreSQL somente quando a tabela de
+> usuarios esta vazia, a partir de `backend/src/main/resources/seed/demo.json`.
+> A V2 nao adiciona as contas novas a um banco ja populado. Para recarregar o
+> seed, use o procedimento de reset apenas no banco local (secao 6.3 da
+> documentacao tecnica). A sessao do navegador fica em `fretehub:auth`.
 
 ## Documentacao tecnica
 
@@ -171,6 +176,7 @@ render.yaml          # Blueprint do Render (site + API)
 
 ## Visao futura
 
-Conta de prestador com envio de propostas, notificacoes, chat, mapas e upload
-de foto no Cloudinary. A solicitacao de frete e o acompanhamento de status
-ja existem, persistidos no PostgreSQL.
+Notificacoes push (SSE/WebSocket), e-mail ou SMS, chat no app, rastreio por
+GPS, mapas, preco calculado por distancia, pagamento, upload de documentos e
+fotos, edicao do perfil pelo motorista, varias rodadas de contraproposta,
+desistencia pelo motorista apos o aceite e varios veiculos por motorista.

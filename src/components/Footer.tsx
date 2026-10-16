@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 
 const footerLink =
-  "inline-flex min-h-6 items-center text-slate-300 transition-colors duration-150 hover:text-white";
+  "inline-flex min-h-11 items-center text-slate-300 transition-colors duration-150 hover:text-white";
 
 export function Footer() {
   return (
@@ -11,7 +11,7 @@ export function Footer() {
         <div>
           <Logo tone="light" />
           <p className="mt-4 max-w-xs leading-relaxed">
-            Catalogo com curadoria de prestadores de fretes urbanos e pequenas
+            Catalogo com curadoria de motoristas de fretes urbanos e pequenas
             mudancas. Contrate com mais seguranca e transparencia.
           </p>
         </div>
@@ -20,7 +20,7 @@ export function Footer() {
           <ul className="mt-4 space-y-3">
             <li>
               <Link to="/catalogo" className={footerLink}>
-                Catalogo de prestadores
+                Catalogo de motoristas
               </Link>
             </li>
             <li>
@@ -29,8 +29,8 @@ export function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/seja-prestador" className={footerLink}>
-                Seja um prestador
+              <Link to="/seja-motorista" className={footerLink}>
+                Seja um motorista
               </Link>
             </li>
           </ul>
@@ -38,8 +38,8 @@ export function Footer() {
         <div>
           <h2 className="font-semibold text-white">Em breve</h2>
           <ul className="mt-4 space-y-3 text-slate-400">
-            <li>Propostas de motoristas</li>
-            <li>Notificacoes</li>
+            <li>Notificacoes por push</li>
+            <li>Rastreio por GPS</li>
             <li>Chat e mapas</li>
           </ul>
         </div>

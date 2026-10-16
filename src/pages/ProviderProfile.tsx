@@ -18,7 +18,7 @@ import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import { useAuth } from "../lib/auth";
 import { formatDate, initials, onlyDigits } from "../lib/format";
 import { profileGreeting, whatsappLink, whatsappNumber } from "../lib/whatsapp";
-import { Badge, VerifiedBadge } from "../components/Badge";
+import { Badge, ProviderTypeBadge, VerifiedBadge } from "../components/Badge";
 import {
   RatingStars,
   averageRating,
@@ -50,7 +50,7 @@ function reviewCount(total: number): string {
 
 export function ProviderProfile() {
   const { id = "" } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isClient } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: provider, isLoading, isError, error } = useQuery({
@@ -71,6 +71,7 @@ export function ProviderProfile() {
       setComment("");
       setRating(5);
       queryClient.invalidateQueries({ queryKey: ["provider", id] });
+      queryClient.invalidateQueries({ queryKey: ["providers"] });
     },
   });
 
@@ -89,7 +90,7 @@ export function ProviderProfile() {
       <div className="mx-auto max-w-3xl px-4 py-16">
         <EmptyState
           icon={UserCircleDashedIcon}
-          title="Prestador nao encontrado"
+          title="Motorista nao encontrado"
           description="O perfil que voce procura nao existe ou foi removido."
           action={<ButtonLink to="/catalogo">Voltar ao catalogo</ButtonLink>}
         />
@@ -99,8 +100,8 @@ export function ProviderProfile() {
 
   const isPublic = provider.status === "APROVADO";
   const avg = averageRating(provider.reviews);
-  const wa = whatsappNumber(provider.contacts.whatsapp);
-  const requestPath = `/solicitar?prestador=${provider.id}`;
+  const wa = whatsappNumber(provider.contacts?.whatsapp);
+  const requestPath = `/solicitar?motorista=${provider.id}`;
 
   return (
     <div>
@@ -125,6 +126,7 @@ export function ProviderProfile() {
             <div className="min-w-0">
               <div className="flex flex-wrap gap-2">
                 {isPublic && <VerifiedBadge />}
+                <ProviderTypeBadge type={provider.type} />
                 <Badge tone="primary">
                   <VehicleIcon
                     type={provider.vehicleType}
@@ -217,15 +219,16 @@ export function ProviderProfile() {
         <aside className="lg:col-start-3 lg:row-span-2 lg:row-start-1">
           <Card className="p-6 lg:sticky lg:top-24">
             <h2 className="text-lg font-semibold text-slate-900">
-              Falar com {provider.name.split(" ")[0]}
+              {provider.type === "INTERNO" ? "Contratar no App" : `Falar com ${provider.name.split(" ")[0]}`}
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-              Registre o pedido no FreteHub ou fale direto para negociar preco
-              e condicoes.
+              {provider.type === "INTERNO"
+                ? "Envie um pedido com valor pelo FreteHub. O contato aparece apos o aceite."
+                : "Fale diretamente para combinar preco e condicoes."}
             </p>
 
             <div className="mt-6 space-y-3">
-              {isPublic && (
+              {isPublic && provider.type === "INTERNO" && provider.available && (isClient || !isAuthenticated) && (
                 <ButtonLink
                   to={isAuthenticated ? requestPath : "/login"}
                   state={isAuthenticated ? undefined : { from: requestPath }}
@@ -237,7 +240,11 @@ export function ProviderProfile() {
                 </ButtonLink>
               )}
 
-              {wa && (
+              {provider.type === "INTERNO" && !provider.available && (
+                <p className="rounded-lg bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700">Indisponivel agora</p>
+              )}
+
+              {provider.type === "EXTERNO" && wa && (
                 <div>
                   <a
                     href={whatsappLink(wa, profileGreeting())}
@@ -256,7 +263,7 @@ export function ProviderProfile() {
                 </div>
               )}
 
-              {provider.contacts.phone && (
+              {provider.type === "EXTERNO" && provider.contacts?.phone && (
                 <a
                   href={`tel:${onlyDigits(provider.contacts.phone)}`}
                   className={buttonClasses({ variant: "secondary", className: "w-full" })}
@@ -266,7 +273,7 @@ export function ProviderProfile() {
                 </a>
               )}
 
-              {provider.contacts.email && (
+              {provider.type === "EXTERNO" && provider.contacts?.email && (
                 <a
                   href={`mailto:${provider.contacts.email}`}
                   className={buttonClasses({ variant: "secondary", className: "w-full" })}
@@ -279,8 +286,9 @@ export function ProviderProfile() {
 
             <p className="mt-6 flex gap-2 border-t border-slate-100 pt-5 text-xs leading-relaxed text-slate-500">
               <InfoIcon weight="fill" className="mt-0.5 size-4 shrink-0" />
-              O FreteHub nao participa da negociacao nesta etapa. Combine os
-              detalhes diretamente com o prestador.
+              {provider.type === "INTERNO"
+                ? "O motorista pode aceitar ou fazer uma contraproposta. Acompanhe tudo em Minhas solicitacoes."
+                : "Combine os detalhes diretamente com o motorista."}
             </p>
           </Card>
         </aside>
@@ -291,7 +299,7 @@ export function ProviderProfile() {
             Avaliacoes
           </h2>
 
-          {isAuthenticated ? (
+          {isClient ? (
             <form
               className="mt-6 space-y-5 rounded-xl bg-slate-50 p-5 ring-1 ring-inset ring-slate-200"
               onSubmit={(e) => {
@@ -308,7 +316,7 @@ export function ProviderProfile() {
                     {[1, 2, 3, 4, 5].map((n) => (
                       <label
                         key={n}
-                        className="cursor-pointer rounded-md p-0.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-primary-600"
+                        className="cursor-pointer rounded-md p-1.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-primary-600"
                       >
                         <input
                           type="radio"
@@ -349,7 +357,7 @@ export function ProviderProfile() {
                 <Textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Conte como foi sua experiencia com este prestador..."
+                  placeholder="Conte como foi sua experiencia com este motorista..."
                   required
                 />
               </Field>
@@ -381,7 +389,7 @@ export function ProviderProfile() {
                 </Button>
               </div>
             </form>
-          ) : (
+          ) : !isAuthenticated ? (
             <p className="mt-6 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-inset ring-slate-200">
               <Link
                 to="/login"
@@ -391,11 +399,11 @@ export function ProviderProfile() {
               </Link>{" "}
               para deixar uma avaliacao.
             </p>
-          )}
+          ) : null}
 
           {provider.reviews.length === 0 ? (
             <p className="mt-6 text-sm text-slate-600">
-              Este prestador ainda nao possui avaliacoes.
+              Este motorista ainda nao possui avaliacoes.
             </p>
           ) : (
             <ul className="mt-6 divide-y divide-slate-100">

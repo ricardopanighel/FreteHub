@@ -37,6 +37,16 @@ public class FreightController {
     return freightService.cancel(id);
   }
 
+  @PostMapping("/freights/{id}/counter-offer/accept")
+  public FreightView acceptCounterOffer(@PathVariable String id) {
+    return freightService.acceptCounterOffer(id);
+  }
+
+  @PostMapping("/freights/{id}/counter-offer/reject")
+  public FreightView rejectCounterOffer(@PathVariable String id) {
+    return freightService.rejectCounterOffer(id);
+  }
+
   @GetMapping("/admin/freights")
   public List<FreightView> all() {
     return freightService.listAll();

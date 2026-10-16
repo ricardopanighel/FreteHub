@@ -13,6 +13,27 @@
       "email": "cliente@fretehub.com",
       "role": "CLIENTE",
       "password": "cliente123"
+    },
+    {
+      "id": "u-carlos",
+      "name": "Carlos Transportes",
+      "email": "motorista@fretehub.com",
+      "role": "MOTORISTA",
+      "password": "motorista123"
+    },
+    {
+      "id": "u-ana",
+      "name": "Ana Express Moto",
+      "email": "ana@fretehub.com",
+      "role": "MOTORISTA",
+      "password": "motorista123"
+    },
+    {
+      "id": "u-pedro",
+      "name": "Pedro Carretos",
+      "email": "pedro@fretehub.com",
+      "role": "MOTORISTA",
+      "password": "motorista123"
     }
   ],
   "providers": [
@@ -32,6 +53,10 @@
         "email": "carlos.fretes@example.com"
       },
       "status": "APROVADO",
+      "type": "INTERNO",
+      "userId": "u-carlos",
+      "available": true,
+      "documentsVerified": true,
       "documentNote": "CNH e CRLV validados em 02/2026.",
       "createdAt": "2026-02-10T10:00:00Z",
       "reviews": [
@@ -66,6 +91,10 @@
         "email": "ana.express@example.com"
       },
       "status": "APROVADO",
+      "type": "INTERNO",
+      "userId": "u-ana",
+      "available": false,
+      "documentsVerified": true,
       "createdAt": "2026-02-18T10:00:00Z",
       "reviews": [
         {
@@ -137,6 +166,10 @@
         "email": "pedro.carretos@example.com"
       },
       "status": "PENDENTE",
+      "type": "INTERNO",
+      "userId": "u-pedro",
+      "available": false,
+      "documentsVerified": false,
       "documentNote": "Aguardando envio do CRLV.",
       "createdAt": "2026-05-28T10:00:00Z",
       "reviews": []
@@ -168,10 +201,14 @@
       "origin": "Santos - Gonzaga",
       "destination": "Sao Vicente - Centro",
       "description": "Mudanca de kitnet: cama de casal, guarda-roupa e geladeira. Tem elevador no predio de destino.",
-      "scheduledDate": "2026-10-12",
+      "city": "Santos",
+      "scheduledInDays": 3,
+      "contactPhone": "+55 13 90000-0101",
+      "priceOffered": 450.00,
+      "agreedPrice": 450.00,
       "vehicleType": "FIORINO",
       "service": "MUDANCA_RESIDENCIAL",
-      "status": "EM_NEGOCIACAO",
+      "status": "ACEITO",
       "createdAt": "2026-09-28T14:00:00Z",
       "updatedAt": "2026-09-29T10:00:00Z"
     },
@@ -182,12 +219,32 @@
       "origin": "Santos - Centro",
       "destination": "Praia Grande - Boqueirao",
       "description": "Entrega de envelope com documentos assinados, ainda hoje.",
-      "scheduledDate": "2026-09-02",
+      "city": "Santos",
+      "scheduledInDays": -43,
+      "contactPhone": "+55 13 90000-0101",
+      "priceOffered": 85.00,
+      "agreedPrice": 85.00,
       "vehicleType": "MOTO",
       "service": "ENTREGA_EXPRESSA",
-      "status": "CONCLUIDA",
+      "status": "CONCLUIDO",
       "createdAt": "2026-09-02T09:00:00Z",
       "updatedAt": "2026-09-02T16:30:00Z"
+    },
+    {
+      "id": "f-003",
+      "clientId": "u-cliente",
+      "origin": "Santos - Centro",
+      "destination": "Guaruja - Centro",
+      "description": "Caixas e duas malas para uma entrega curta.",
+      "city": "Santos",
+      "scheduledInDays": 2,
+      "contactPhone": "+55 13 90000-0101",
+      "priceOffered": 120.00,
+      "vehicleType": "FIORINO",
+      "service": "FRETE_PEQUENO",
+      "status": "EXPIRADO",
+      "createdAt": "2026-09-20T12:00:00Z",
+      "updatedAt": "2026-09-20T12:30:00Z"
     }
   ]
 }

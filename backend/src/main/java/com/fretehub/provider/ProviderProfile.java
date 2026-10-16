@@ -1,8 +1,10 @@
 package com.fretehub.provider;
 
 import com.fretehub.domain.Enums.ProviderStatus;
+import com.fretehub.domain.Enums.ProviderType;
 import com.fretehub.domain.Enums.ServiceTag;
 import com.fretehub.domain.Enums.VehicleType;
+import com.fretehub.user.UserAccount;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -15,6 +17,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
@@ -67,6 +70,20 @@ public class ProviderProfile {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private ProviderStatus status;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private ProviderType type = ProviderType.EXTERNO;
+
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", unique = true)
+  private UserAccount user;
+
+  @Column(name = "is_available", nullable = false)
+  private boolean available;
+
+  @Column(nullable = false)
+  private boolean documentsVerified;
 
   private String documentNote;
 
@@ -165,6 +182,38 @@ public class ProviderProfile {
 
   public void setStatus(ProviderStatus status) {
     this.status = status;
+  }
+
+  public ProviderType getType() {
+    return type;
+  }
+
+  public void setType(ProviderType type) {
+    this.type = type;
+  }
+
+  public UserAccount getUser() {
+    return user;
+  }
+
+  public void setUser(UserAccount user) {
+    this.user = user;
+  }
+
+  public boolean isAvailable() {
+    return available;
+  }
+
+  public void setAvailable(boolean available) {
+    this.available = available;
+  }
+
+  public boolean isDocumentsVerified() {
+    return documentsVerified;
+  }
+
+  public void setDocumentsVerified(boolean documentsVerified) {
+    this.documentsVerified = documentsVerified;
   }
 
   public String getDocumentNote() {

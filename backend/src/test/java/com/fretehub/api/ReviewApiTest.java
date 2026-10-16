@@ -64,4 +64,10 @@ class ReviewApiTest extends ApiTestSupport {
     String client = login(CLIENT_EMAIL, CLIENT_PASSWORD);
     review(client, 6, "Nota invalida.", 400);
   }
+
+  @Test
+  void motoristaEAdminNaoAvaliam() throws Exception {
+    review(login(DRIVER_EMAIL, DRIVER_PASSWORD), 5, "Tentativa motorista.", 403);
+    review(login(ADMIN_EMAIL, ADMIN_PASSWORD), 5, "Tentativa admin.", 403);
+  }
 }

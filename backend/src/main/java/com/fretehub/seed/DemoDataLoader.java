@@ -3,6 +3,7 @@ package com.fretehub.seed;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fretehub.domain.Enums.FreightStatus;
 import com.fretehub.domain.Enums.ProviderStatus;
+import com.fretehub.domain.Enums.ProviderType;
 import com.fretehub.domain.Enums.ServiceTag;
 import com.fretehub.domain.Enums.UserRole;
 import com.fretehub.domain.Enums.VehicleType;
@@ -17,6 +18,9 @@ import com.fretehub.user.UserRepository;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.ApplicationArguments;
@@ -29,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Order(0)
 public class DemoDataLoader implements ApplicationRunner {
+
+  private static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
 
   private final ObjectMapper objectMapper;
   private final PasswordEncoder passwordEncoder;
@@ -85,6 +91,14 @@ public class DemoDataLoader implements ApplicationRunner {
           contacts == null ? null : contacts.whatsapp(),
           contacts == null ? null : contacts.email()));
       provider.setStatus(ProviderStatus.valueOf(item.status()));
+      provider.setType(ProviderType.valueOf(item.type() == null ? "EXTERNO" : item.type()));
+      if (item.userId() != null) {
+        provider.setUser(users.findById(item.userId()).orElseThrow());
+      }
+      provider.setAvailable(Boolean.TRUE.equals(item.available()));
+      provider.setDocumentsVerified(item.documentsVerified() == null
+          ? provider.getStatus() == ProviderStatus.APROVADO
+          : item.documentsVerified());
       provider.setDocumentNote(item.documentNote());
       provider.setCreatedAt(item.createdAt());
       if (item.reviews() != null) {
@@ -114,7 +128,15 @@ public class DemoDataLoader implements ApplicationRunner {
       freight.setOrigin(item.origin());
       freight.setDestination(item.destination());
       freight.setDescription(item.description());
-      freight.setScheduledDate(item.scheduledDate());
+      freight.setCity(item.city());
+      freight.setScheduledAt(LocalDate.now(ZONE)
+          .plusDays(item.scheduledInDays() == null ? 1 : item.scheduledInDays())
+          .atTime(LocalTime.of(9, 0)).atZone(ZONE).toInstant());
+      freight.setContactPhone(item.contactPhone());
+      freight.setPriceOffered(item.priceOffered());
+      freight.setCounterPrice(item.counterPrice());
+      freight.setAgreedPrice(item.agreedPrice());
+      freight.setResponseDeadline(item.responseDeadline());
       freight.setVehicleType(item.vehicleType() == null ? null : VehicleType.valueOf(item.vehicleType()));
       freight.setService(item.service() == null ? null : ServiceTag.valueOf(item.service()));
       freight.setStatus(FreightStatus.valueOf(item.status()));
@@ -146,6 +168,10 @@ public class DemoDataLoader implements ApplicationRunner {
       List<String> services,
       SeedContact contacts,
       String status,
+      String type,
+      String userId,
+      Boolean available,
+      Boolean documentsVerified,
       String documentNote,
       Instant createdAt,
       List<SeedReview> reviews) {}
@@ -157,7 +183,13 @@ public class DemoDataLoader implements ApplicationRunner {
       String origin,
       String destination,
       String description,
-      LocalDate scheduledDate,
+      String city,
+      Integer scheduledInDays,
+      String contactPhone,
+      BigDecimal priceOffered,
+      BigDecimal counterPrice,
+      BigDecimal agreedPrice,
+      Instant responseDeadline,
       String vehicleType,
       String service,
       String status,

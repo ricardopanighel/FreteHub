@@ -7,7 +7,7 @@ import {
   XIcon,
 } from "@phosphor-icons/react";
 import { listPublicProviders, listRegions } from "../lib/api";
-import type { CatalogFilters, ServiceTag, VehicleType } from "../lib/types";
+import type { CatalogFilters, ProviderType, ServiceTag, VehicleType } from "../lib/types";
 import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import { ProviderCard, ProviderGridSkeleton } from "../components/ProviderCard";
 import {
@@ -28,12 +28,13 @@ const EMPTY: CatalogFilters = {
   vehicleType: "",
   region: "",
   service: "",
+  type: "",
 };
 
 const PAGE_SIZE = 9;
 
 function resultLabel(total: number, filtered: boolean): string {
-  const noun = total === 1 ? "prestador" : "prestadores";
+  const noun = total === 1 ? "motorista" : "motoristas";
   if (!filtered) return `${total} ${noun} no catalogo`;
   return `${total} ${noun} ${total === 1 ? "encontrado" : "encontrados"}`;
 }
@@ -77,7 +78,7 @@ export function Catalog() {
   };
 
   const hasActiveFilters =
-    filters.search || filters.vehicleType || filters.region || filters.service;
+    filters.search || filters.vehicleType || filters.region || filters.service || filters.type;
 
   const clearAll = () => {
     setFilters(EMPTY);
@@ -88,14 +89,14 @@ export function Catalog() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
       <PageHeader
-        title="Catalogo de prestadores"
-        description="Todos os prestadores abaixo foram validados pela equipe FreteHub."
+        title="Catalogo de motoristas"
+        description="Motoristas validados pela equipe. Escolha entre contratar no app e falar diretamente."
       />
 
       {/* Barra de busca + filtros */}
       <Card className="mt-8 p-4 sm:p-5">
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-          <div className="sm:col-span-3 lg:col-span-1">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="sm:col-span-2 lg:col-span-1">
             <Field label="Busca">
               <span className="relative block">
                 <MagnifyingGlassIcon
@@ -126,6 +127,14 @@ export function Catalog() {
                   {label}
                 </option>
               ))}
+            </Select>
+          </Field>
+
+          <Field label="Forma de contratacao">
+            <Select value={filters.type ?? ""} onChange={(e) => updateFilter("type", e.target.value as ProviderType | "")}>
+              <option value="">Todas</option>
+              <option value="INTERNO">Contratar no App</option>
+              <option value="EXTERNO">Contato Direto</option>
             </Select>
           </Field>
 
@@ -177,7 +186,7 @@ export function Catalog() {
       <div className="mt-4">
         <h2 className="sr-only">Resultados</h2>
         {isLoading ? (
-          <ProviderGridSkeleton count={6} label="Buscando prestadores..." />
+          <ProviderGridSkeleton count={6} label="Buscando motoristas..." />
         ) : isError ? (
           <ErrorNote message={queryErrorMessage(error)} />
         ) : data && data.items.length > 0 ? (
@@ -224,7 +233,7 @@ export function Catalog() {
         ) : (
           <EmptyState
             icon={MagnifyingGlassIcon}
-            title="Nenhum prestador encontrado"
+            title="Nenhum motorista encontrado"
             description="Tente ajustar a busca ou remover alguns filtros."
             action={
               hasActiveFilters ? (

@@ -17,7 +17,7 @@ import {
 import { listAllProviders, updateProviderStatus } from "../lib/api";
 import type { Provider, ProviderStatus } from "../lib/types";
 import { VEHICLE_LABELS } from "../lib/types";
-import { StatusBadge } from "../components/Badge";
+import { ProviderTypeBadge, StatusBadge } from "../components/Badge";
 import { StatCard } from "../components/StatCard";
 import { VehicleIcon } from "../components/VehicleIcon";
 import {
@@ -33,12 +33,12 @@ import {
 } from "../components/ui";
 import { AdminFreights } from "./AdminFreights";
 
-type Panel = "prestadores" | "fretes";
+type Panel = "motoristas" | "fretes";
 
 type Tab = "PENDENTE" | "APROVADO" | "TODOS";
 
 const PANELS: { key: Panel; label: string; icon: Icon }[] = [
-  { key: "prestadores", label: "Prestadores", icon: UsersThreeIcon },
+  { key: "motoristas", label: "Motoristas", icon: UsersThreeIcon },
   { key: "fretes", label: "Solicitacoes", icon: ClipboardTextIcon },
 ];
 
@@ -50,7 +50,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 export function AdminDashboard() {
   const queryClient = useQueryClient();
-  const [panel, setPanel] = useState<Panel>("prestadores");
+  const [panel, setPanel] = useState<Panel>("motoristas");
   const [tab, setTab] = useState<Tab>("PENDENTE");
 
   const { data: providers, isLoading, isError, error } = useQuery({
@@ -65,6 +65,7 @@ export function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["admin", "providers"] });
       queryClient.invalidateQueries({ queryKey: ["providers"] });
       queryClient.invalidateQueries({ queryKey: ["regions"] });
+      queryClient.invalidateQueries({ queryKey: ["cities"] });
     },
   });
 
@@ -97,7 +98,7 @@ export function AdminDashboard() {
 
     return (
       <div className="flex flex-wrap gap-2 sm:justify-end">
-        {p.status !== "APROVADO" && (
+        {p.status === "PENDENTE" && (
           <Button
             size="sm"
             disabled={busy}
@@ -149,9 +150,9 @@ export function AdminDashboard() {
       <PageHeader
         title="Painel da equipe"
         description={
-          panel === "prestadores"
-            ? "Valide a documentacao e gerencie a publicacao dos prestadores no catalogo."
-            : "Acompanhe os pedidos de frete e avance o status de cada um."
+          panel === "motoristas"
+            ? "Confira CNH e CRLV, aprove motoristas e gerencie a publicacao no catalogo."
+            : "Modere pedidos de frete e avance pedidos antigos de contato direto."
         }
         actions={
           <div
@@ -166,7 +167,7 @@ export function AdminDashboard() {
                 aria-pressed={panel === key}
                 onClick={() => setPanel(key)}
                 className={cx(
-                  "inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors duration-150",
+                  "inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors duration-150",
                   panel === key
                     ? "bg-white text-primary-700 ring-1 ring-slate-200"
                     : "text-slate-600 hover:text-slate-900",
@@ -233,7 +234,7 @@ export function AdminDashboard() {
               <Alert tone="danger" className="mt-6">
                 {queryErrorMessage(
                   mutation.error,
-                  "Nao foi possivel atualizar o prestador.",
+                  "Nao foi possivel atualizar o motorista.",
                 )}
               </Alert>
             )}
@@ -246,7 +247,7 @@ export function AdminDashboard() {
               </div>
             ) : filtered.length === 0 ? (
               <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-600">
-                Nenhum prestador nesta aba.
+                Nenhum motorista nesta aba.
               </p>
             ) : (
               <ul className="mt-6 space-y-3">
@@ -261,12 +262,13 @@ export function AdminDashboard() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            to={`/prestador/${p.id}`}
+                            to={`/motorista/${p.id}`}
                             className="font-semibold text-slate-900 underline-offset-4 transition-colors duration-150 hover:text-primary-700 hover:underline"
                           >
                             {p.name}
                           </Link>
                           <StatusBadge status={p.status} />
+                          <ProviderTypeBadge type={p.type} />
                         </div>
                         <p className="mt-1 flex items-start gap-1.5 text-sm text-slate-600">
                           <VehicleIcon
@@ -279,6 +281,7 @@ export function AdminDashboard() {
                             {p.regions.join(", ")}
                           </span>
                         </p>
+                        <p className="mt-1 text-xs font-medium text-slate-600">Documentos: {p.documentsVerified ? "conferidos" : "pendentes"} | Disponibilidade: {p.available ? "disponivel" : "indisponivel"}</p>
                         {p.documentNote && (
                           <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 ring-1 ring-inset ring-amber-200">
                             <NoteIcon weight="bold" className="mt-px size-4 shrink-0" />

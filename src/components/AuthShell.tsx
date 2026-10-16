@@ -9,13 +9,13 @@ import {
 const HIGHLIGHTS: { icon: Icon; title: string; text: string }[] = [
   {
     icon: SealCheckIcon,
-    title: "Prestadores validados",
+    title: "Motoristas validados",
     text: "Cada perfil passa pela curadoria da equipe antes de ser publicado.",
   },
   {
     icon: ClipboardTextIcon,
     title: "Pedidos acompanhados",
-    text: "Registre o frete e acompanhe o status em Meus fretes.",
+    text: "Registre o frete e acompanhe o aceite em Minhas solicitacoes.",
   },
   {
     icon: StarIcon,

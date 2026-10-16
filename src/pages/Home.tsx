@@ -21,24 +21,24 @@ const STEPS: { icon: Icon; title: string; text: string }[] = [
   {
     icon: MagnifyingGlassIcon,
     title: "Busque no catalogo",
-    text: "Filtre por tipo de veiculo, regiao e servico para encontrar o prestador ideal.",
+    text: "Filtre por tipo de veiculo, regiao e servico para encontrar o motorista ideal.",
   },
   {
     icon: SealCheckIcon,
     title: "Veja o perfil validado",
-    text: "Cada prestador passa pela curadoria da nossa equipe antes de ser publicado.",
+    text: "Cada motorista passa pela curadoria da nossa equipe antes de ser publicado.",
   },
   {
     icon: ClipboardTextIcon,
     title: "Solicite e acompanhe",
-    text: "Abra um pedido de frete e veja o status. O contato com o prestador continua direto.",
+    text: "Contrate pelo app ou fale diretamente com um motorista do diretorio.",
   },
 ];
 
 const DIFFERENTIALS: { icon: Icon; title: string; text: string }[] = [
   {
     icon: ShieldCheckIcon,
-    title: "Prestadores validados",
+    title: "Motoristas validados",
     text: "Documentacao, dados do veiculo e contatos conferidos pela equipe FreteHub.",
   },
   {
@@ -48,8 +48,8 @@ const DIFFERENTIALS: { icon: Icon; title: string; text: string }[] = [
   },
   {
     icon: HandshakeIcon,
-    title: "Contato direto",
-    text: "Voce escolhe o canal e negocia preco e condicoes diretamente com o prestador.",
+    title: "Dois caminhos",
+    text: "Envie uma oferta pelo app ou combine o frete diretamente por telefone e WhatsApp.",
   },
 ];
 
@@ -81,8 +81,8 @@ export function Home() {
               <span className="text-accent-400">confianca</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-300">
-              Encontre motoristas e prestadores validados pela nossa equipe.
-              Compare, fale direto e contrate sem a bagunca dos grupos de
+              Encontre motoristas validados pela nossa equipe.
+              Compare, contrate pelo app ou fale direto, sem a bagunca dos grupos de
               WhatsApp e classificados.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">
@@ -94,10 +94,10 @@ export function Home() {
                 Solicitar frete
               </ButtonLink>
               <Link
-                to="/seja-prestador"
+                to="/seja-motorista"
                 className="group inline-flex min-h-12 items-center gap-1.5 rounded-lg px-3 text-base font-semibold text-slate-200 transition-colors duration-150 hover:text-white"
               >
-                Quero ser prestador
+                Quero ser motorista
                 <ArrowRightIcon
                   weight="bold"
                   className="size-4 transition-transform duration-150 group-hover:translate-x-0.5"
@@ -154,8 +154,8 @@ export function Home() {
             Como funciona
           </h2>
           <p className="mt-3 text-base leading-relaxed text-slate-600">
-            Encontre um prestador validado, registre o pedido e acompanhe o
-            andamento. A negociacao de preco continua direta com o prestador.
+            Escolha um motorista validado. No app, ofereca um valor e acompanhe
+            o aceite. No diretorio, fale diretamente com o motorista.
           </p>
         </div>
         <ol className="mt-12 grid gap-6 md:grid-cols-3">
@@ -182,7 +182,7 @@ export function Home() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-                Prestadores em destaque
+                Motoristas em destaque
               </h2>
               <p className="mt-2 text-base text-slate-600">
                 Alguns dos profissionais ativos no catalogo.
@@ -193,7 +193,7 @@ export function Home() {
               className="group hidden min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-primary-700 transition-colors duration-150 hover:text-primary-800 sm:inline-flex"
             >
               Ver todos
-              <span className="sr-only"> os prestadores</span>
+              <span className="sr-only"> os motoristas</span>
               <ArrowRightIcon
                 weight="bold"
                 className="size-4 transition-transform duration-150 group-hover:translate-x-0.5"
@@ -205,7 +205,7 @@ export function Home() {
             {isLoading ? (
               <ProviderGridSkeleton
                 count={3}
-                label="Carregando prestadores em destaque..."
+                label="Carregando motoristas em destaque..."
               />
             ) : isError ? (
               <ErrorNote message={queryErrorMessage(error)} />
@@ -223,7 +223,7 @@ export function Home() {
             variant="secondary"
             className="mt-8 w-full sm:hidden"
           >
-            Ver todos os prestadores
+            Ver todos os motoristas
           </ButtonLink>
         </div>
       </section>
@@ -248,7 +248,7 @@ export function Home() {
         </ul>
       </section>
 
-      {/* Chamada para prestadores */}
+      {/* Chamada para motoristas */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="surface-dark flex flex-col gap-8 rounded-3xl bg-navy-900 px-6 py-10 text-white sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:px-14 lg:py-14">
           <div className="max-w-xl">
@@ -256,17 +256,17 @@ export function Home() {
               Faz fretes ou pequenas mudancas?
             </h2>
             <p className="mt-3 text-base leading-relaxed text-slate-300">
-              Cadastre seu perfil. Depois da validacao da equipe, ele aparece
-              no catalogo para quem procura frete.
+              Cadastre seu perfil. Depois da validacao, receba pedidos pelo app
+              ou apareca no diretorio de contato direto.
             </p>
           </div>
           <ButtonLink
-            to="/seja-prestador"
+            to="/seja-motorista"
             variant="accent"
             size="lg"
             className="shrink-0 self-start lg:self-auto"
           >
-            Quero ser prestador
+            Quero ser motorista
             <ArrowRightIcon weight="bold" className="size-5" />
           </ButtonLink>
         </div>

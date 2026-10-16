@@ -14,8 +14,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "freight_requests")
@@ -43,8 +44,27 @@ public class FreightOrder {
   @Column(nullable = false, length = 4000)
   private String description;
 
+  private String city;
+
   @Column(nullable = false)
-  private LocalDate scheduledDate;
+  private Instant scheduledAt;
+
+  private String contactPhone;
+
+  @Column(precision = 10, scale = 2)
+  private BigDecimal priceOffered;
+
+  @Column(precision = 10, scale = 2)
+  private BigDecimal counterPrice;
+
+  @Column(precision = 10, scale = 2)
+  private BigDecimal agreedPrice;
+
+  private Instant responseDeadline;
+
+  @Version
+  @Column(nullable = false)
+  private Long version;
 
   @Enumerated(EnumType.STRING)
   private VehicleType vehicleType;
@@ -120,12 +140,64 @@ public class FreightOrder {
     this.description = description;
   }
 
-  public LocalDate getScheduledDate() {
-    return scheduledDate;
+  public String getCity() {
+    return city;
   }
 
-  public void setScheduledDate(LocalDate scheduledDate) {
-    this.scheduledDate = scheduledDate;
+  public void setCity(String city) {
+    this.city = city;
+  }
+
+  public Instant getScheduledAt() {
+    return scheduledAt;
+  }
+
+  public void setScheduledAt(Instant scheduledAt) {
+    this.scheduledAt = scheduledAt;
+  }
+
+  public String getContactPhone() {
+    return contactPhone;
+  }
+
+  public void setContactPhone(String contactPhone) {
+    this.contactPhone = contactPhone;
+  }
+
+  public BigDecimal getPriceOffered() {
+    return priceOffered;
+  }
+
+  public void setPriceOffered(BigDecimal priceOffered) {
+    this.priceOffered = priceOffered;
+  }
+
+  public BigDecimal getCounterPrice() {
+    return counterPrice;
+  }
+
+  public void setCounterPrice(BigDecimal counterPrice) {
+    this.counterPrice = counterPrice;
+  }
+
+  public BigDecimal getAgreedPrice() {
+    return agreedPrice;
+  }
+
+  public void setAgreedPrice(BigDecimal agreedPrice) {
+    this.agreedPrice = agreedPrice;
+  }
+
+  public Instant getResponseDeadline() {
+    return responseDeadline;
+  }
+
+  public void setResponseDeadline(Instant responseDeadline) {
+    this.responseDeadline = responseDeadline;
+  }
+
+  public Long getVersion() {
+    return version;
   }
 
   public VehicleType getVehicleType() {
