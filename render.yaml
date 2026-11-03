@@ -16,6 +16,12 @@ services:
         value: "22"
       - key: VITE_API_URL
         value: https://fretehub-api.onrender.com
+      # Upload de fotos (Cloudinary, preset unsigned). Sem elas, o cadastro
+      # pede a URL da foto.
+      - key: VITE_CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: VITE_CLOUDINARY_UPLOAD_PRESET
+        sync: false
     routes:
       # Rotas do React Router (/catalogo, /prestador/...) nao sao arquivos.
       # O Render serve primeiro os arquivos que existem; o resto vai para o

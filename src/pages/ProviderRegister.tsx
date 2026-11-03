@@ -13,6 +13,12 @@ import {
 } from "@phosphor-icons/react";
 import { createProvider, type NewProviderInput } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import {
+  ACCEPTED_PHOTO_TYPES,
+  photoUploadEnabled,
+  uploadPhoto,
+  validatePhoto,
+} from "../lib/upload";
 import type { ServiceTag, VehicleType } from "../lib/types";
 import { SERVICE_LABELS, VEHICLE_LABELS } from "../lib/types";
 import {
@@ -108,6 +114,23 @@ export function ProviderRegister() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [driverError, setDriverError] = useState<string | null>(null);
   const [driverPending, setDriverPending] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const handlePhoto = async (file: File | undefined) => {
+    if (!file) return;
+    const invalid = validatePhoto(file);
+    setPhotoError(invalid);
+    if (invalid) return;
+    setPhotoUploading(true);
+    try {
+      set("photoUrl", await uploadPhoto(file));
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : "Nao foi possivel enviar a foto.");
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: createProvider,
@@ -273,17 +296,40 @@ export function ProviderRegister() {
                 placeholder="Conte sua experiencia, diferenciais e como voce trabalha."
               />
             </Field>
-            <Field
-              label="URL da foto"
-              hint="Opcional no MVP. No produto final, o upload sera feito via Cloudinary."
-            >
-              <Input
-                inputMode="url"
-                value={form.photoUrl}
-                onChange={(e) => set("photoUrl", e.target.value)}
-                placeholder="https://..."
-              />
-            </Field>
+            {photoUploadEnabled ? (
+              <Field
+                label="Foto"
+                hint="Opcional. JPG, PNG ou WEBP de ate 5 MB."
+                error={photoError ?? undefined}
+              >
+                <div className="flex items-center gap-4">
+                  {form.photoUrl && (
+                    <img
+                      src={form.photoUrl}
+                      alt="Previa da foto"
+                      className="size-16 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
+                    />
+                  )}
+                  <Input
+                    type="file"
+                    accept={ACCEPTED_PHOTO_TYPES.join(",")}
+                    disabled={photoUploading}
+                    onChange={(e) => handlePhoto(e.target.files?.[0])}
+                    className="py-2 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-sm file:font-medium file:text-slate-800"
+                  />
+                  {photoUploading && <ButtonSpinner />}
+                </div>
+              </Field>
+            ) : (
+              <Field label="URL da foto" hint="Opcional.">
+                <Input
+                  inputMode="url"
+                  value={form.photoUrl}
+                  onChange={(e) => set("photoUrl", e.target.value)}
+                  placeholder="https://..."
+                />
+              </Field>
+            )}
           </FormSection>
 
           <FormSection icon={TruckIcon} title="Veiculo e atuacao">
@@ -423,7 +469,7 @@ export function ProviderRegister() {
             <ButtonLink to="/" variant="secondary" size="lg">
               Cancelar
             </ButtonLink>
-            <Button type="submit" size="lg" disabled={mutation.isPending || driverPending}>
+            <Button type="submit" size="lg" disabled={mutation.isPending || driverPending || photoUploading}>
               {mutation.isPending || driverPending ? (
                 <>
                   <ButtonSpinner />
