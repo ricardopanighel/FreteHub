@@ -21,29 +21,28 @@ Equipe: Caio Monte Alegre, Lucas Silva Fagundes, Ricardo Panighel Lazarini.
 | Banco       | PostgreSQL 16                                   |
 | Auth        | JWT (stateless)                                 |
 
-A foto do motorista e uma URL. O upload de arquivos fica para uma versao futura;
-o campo `photoUrl` ja define o contrato.
+A foto do motorista vai do navegador direto para o Cloudinary (upload preset
+"unsigned"); a API so guarda a URL em `photoUrl`. Para ligar, crie um arquivo
+`.env.local` na raiz com:
+
+```
+VITE_CLOUDINARY_CLOUD_NAME=<cloud name do painel do Cloudinary>
+VITE_CLOUDINARY_UPLOAD_PRESET=<nome do preset unsigned>
+```
+
+Sem essas variaveis, o cadastro mostra o campo de URL da foto.
 
 ## Como rodar
 
-PostgreSQL local (Homebrew), uma vez:
+Passo a passo completo para a equipe, com Windows, macOS e Docker:
+**[docs/como-rodar-localmente.md](docs/como-rodar-localmente.md)**.
+
+Resumo, com o PostgreSQL ja rodando (banco, usuario e senha `fretehub`):
 
 ```bash
-brew services start postgresql@16
-createuser -s fretehub
-psql -d postgres -c "ALTER USER fretehub WITH PASSWORD 'fretehub';"
-createdb -O fretehub fretehub
-```
-
-API e front, em terminais separados. A API exige Java 21 ou mais recente (compila com release 21). Se `java` nao estiver no PATH:
-
-```bash
-export JAVA_HOME=$(/usr/libexec/java_home)
-```
-
-```bash
-cd backend && ./mvnw spring-boot:run   # http://localhost:8080
-npm install && npm run dev             # http://localhost:5173
+git clone https://github.com/ricardopanighel/FreteHub.git && cd FreteHub
+cd backend && ./mvnw spring-boot:run   # API em http://localhost:8080 (Java 21+)
+npm install && npm run dev             # em outro terminal: http://localhost:5173
 ```
 
 O Vite encaminha `/api` para a API. O schema e criado/atualizado pelas
@@ -59,6 +58,11 @@ npm run lint     # type-check (tsc --noEmit)
 cd backend && ./mvnw test   # testes de API (contas, curadoria, fretes, fila, contatos)
 ```
 
+## Capturas de tela
+
+As telas principais, em desktop e celular, estao em
+[capturas-principais/](capturas-principais/LEIAME.md).
+
 ## Configuracao
 
 A API le as credenciais do ambiente (ver `.env.example`). Em **dev** (perfil
@@ -72,6 +76,7 @@ sobrevivem a reinicializacao.
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | banco local `fretehub` | **obrigatorias**    |
 | `JWT_SECRET`             | opcional (chave efemera)  | **obrigatoria**, 32+ caracteres |
 | `FREIGHT_RESPONSE_MINUTES` | `30`                  | opcional            |
+| `VITE_CLOUDINARY_CLOUD_NAME` / `VITE_CLOUDINARY_UPLOAD_PRESET` | opcionais, em `.env.local` (front) | opcionais, no `fretehub-web` |
 
 Com `SPRING_PROFILES_ACTIVE=prod`, nao ha defaults: a aplicacao nao sobe sem
 `DB_*` e `JWT_SECRET`. Nenhum segredo fica versionado.
@@ -90,6 +95,9 @@ A versao online usa dois servicos no **Render** (plano free), descritos no
 2. No Render, **New → Blueprint** com este repositorio (le o `render.yaml`).
 3. Cole a connection string em `DATABASE_URL`. O `JWT_SECRET` e gerado pelo
    Render.
+4. Para o upload de fotos, preencha `VITE_CLOUDINARY_CLOUD_NAME` e
+   `VITE_CLOUDINARY_UPLOAD_PRESET` no `fretehub-web`. Elas entram no build, entao
+   e preciso refazer o deploy do site depois de mudar.
 
 Na primeira subida, o Flyway cria as tabelas e o seed carrega as contas de
 demonstracao. A API dorme apos 15 min sem acesso e leva 1 a 2 min para
@@ -116,7 +124,8 @@ exige subir a API contra o PostgreSQL local.
 - **Catalogo publico** com busca, filtros, paginacao e selos "Contratar no App"
   ou "Contato Direto". O motorista externo oferece links `wa.me` e `tel:`;
   os contatos do interno ficam privados ate o aceite do pedido.
-- **Cadastro de motorista** em `/seja-motorista`. A opcao "Receber pedidos pelo
+- **Cadastro de motorista** em `/seja-motorista`. A foto e enviada pelo Cloudinary
+  (ou informada por URL, se o upload nao estiver configurado). A opcao "Receber pedidos pelo
   app" cria uma conta `MOTORISTA`; sem ela, cria apenas o perfil de contato
   direto. Ambos entram como `PENDENTE` e passam pela curadoria da equipe.
 - **Solicitacao de frete** pelo cliente com origem, destino, cidade, data e
@@ -164,6 +173,7 @@ src/                 # front-end
   lib/types.ts       # tipos que espelham o JSON da API
   lib/auth.tsx       # sessao (token JWT)
   lib/whatsapp.ts    # links wa.me com mensagem pronta
+  lib/upload.ts      # upload de fotos para o Cloudinary
   components/ui.tsx  # componentes base do design system
 backend/             # Spring Boot
   src/main/java/com/fretehub/
@@ -177,6 +187,5 @@ render.yaml          # Blueprint do Render (site + API)
 ## Visao futura
 
 Notificacoes push (SSE/WebSocket), e-mail ou SMS, chat no app, rastreio por
-GPS, mapas, preco calculado por distancia, pagamento, upload de documentos e
-fotos, edicao do perfil pelo motorista, varias rodadas de contraproposta,
+GPS, mapas, preco calculado por distancia, pagamento, upload de documentos, edicao do perfil pelo motorista, varias rodadas de contraproposta,
 desistencia pelo motorista apos o aceite e varios veiculos por motorista.
