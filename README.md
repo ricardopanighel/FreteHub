@@ -34,8 +34,10 @@ Sem essas variaveis, o cadastro mostra o campo de URL da foto.
 
 ## Como rodar
 
-Passo a passo completo para a equipe, com Windows, macOS e Docker:
-**[docs/como-rodar-localmente.md](docs/como-rodar-localmente.md)**.
+Passo a passo completo para a equipe:
+
+- **Windows:** [docs/como-rodar-no-windows.md](docs/como-rodar-no-windows.md)
+- **macOS / Linux:** [docs/como-rodar-localmente.md](docs/como-rodar-localmente.md)
 
 Resumo, com o PostgreSQL ja rodando (banco, usuario e senha `fretehub`):
 

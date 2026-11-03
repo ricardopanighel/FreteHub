@@ -1,4 +1,7 @@
-# Como baixar e rodar o FreteHub no seu computador
+# Como baixar e rodar o FreteHub no macOS ou Linux
+
+> Usa Windows? Siga o [guia do Windows](como-rodar-no-windows.md), com os
+> comandos do PowerShell e os problemas mais comuns por la.
 
 Guia para a equipe. Ao final voce tera o site em http://localhost:5173, com a
 API e o banco rodando na sua maquina e as contas de demonstracao prontas para
@@ -47,7 +50,7 @@ Para pegar atualizacoes depois: `git pull`.
 A API espera um banco `fretehub` em `localhost:5432`, com usuario `fretehub` e
 senha `fretehub`. Escolha **uma** das opcoes.
 
-**Opcao A: Docker** (igual em Windows, macOS e Linux; precisa do
+**Opcao A: Docker** (precisa do
 [Docker Desktop](https://www.docker.com/products/docker-desktop/)):
 
 ```bash
@@ -56,7 +59,6 @@ docker run --name fretehub-db -d -p 5432:5432 \
   postgres:16
 ```
 
-No PowerShell (Windows), escreva o comando numa linha so, sem as `\`.
 Nas proximas vezes, basta `docker start fretehub-db`.
 
 **Opcao B: macOS com Homebrew:**
@@ -69,15 +71,6 @@ psql -d postgres -c "ALTER USER fretehub WITH PASSWORD 'fretehub';"
 createdb -O fretehub fretehub
 ```
 
-**Opcao C: Windows com instalador:** instale o PostgreSQL 16 por
-https://www.postgresql.org/download/windows/ e abra o **SQL Shell (psql)**
-com o usuario `postgres`. Depois rode:
-
-```sql
-CREATE USER fretehub WITH PASSWORD 'fretehub' SUPERUSER;
-CREATE DATABASE fretehub OWNER fretehub;
-```
-
 Voce nao precisa criar tabelas. A API cria tudo na primeira subida e carrega
 os dados de demonstracao.
 
@@ -87,7 +80,7 @@ Num terminal, a partir da pasta do projeto:
 
 ```bash
 cd backend
-./mvnw spring-boot:run        # Windows: mvnw.cmd spring-boot:run
+./mvnw spring-boot:run
 ```
 
 A primeira vez demora alguns minutos, porque o Maven baixa as dependencias. A
@@ -132,13 +125,10 @@ Peca os dois valores ao Ricardo e reinicie o `npm run dev`.
 
 ## Problemas comuns
 
-Os comandos com `VARIAVEL=valor` na frente sao do macOS/Linux. No PowerShell,
-defina antes: `$env:SERVER_PORT="8081"`, e depois rode o comando.
-
 | Sintoma | Causa e solucao |
 | --- | --- |
 | API para com `Connection refused` ou `password authentication failed` | O PostgreSQL nao esta rodando ou o usuario/senha nao e `fretehub`. Refaca o passo 3. |
-| `Port 5432 is already in use` no Docker | Ja existe um PostgreSQL na maquina. Pare o outro ou use a opcao B/C com ele. |
+| `Port 5432 is already in use` no Docker | Ja existe um PostgreSQL na maquina. Pare o outro ou use a opcao B com ele. |
 | `Port 8080 was already in use` | Outra aplicacao usa a porta. Suba a API com `SERVER_PORT=8081 ./mvnw spring-boot:run` e o site com `VITE_PROXY_TARGET=http://localhost:8081 npm run dev`. |
 | `release version 21 not supported` | O Java e antigo. Instale o JDK 21 ou mais recente. |
 | Site abre, mas nenhuma lista carrega | A API nao esta no ar. Veja o terminal do passo 4. |
@@ -151,7 +141,7 @@ suba a API de novo:
 
 ```bash
 docker rm -f fretehub-db    # opcao A; depois repita o docker run do passo 3
-# ou, nas opcoes B e C:
+# ou, na opcao B:
 psql -U fretehub -d postgres -c "DROP DATABASE fretehub;" -c "CREATE DATABASE fretehub;"
 ```
 
